@@ -74,12 +74,12 @@
     // didMoveToWindow after the view initialization, this is the first opportunity to notify
     // components of the drawable's size
 #if AUTOMATICALLY_RESIZE
-    [self resizeDrawable:self.window.screen.nativeScale];
+    [self resizeDrawable:self.contentScaleFactor];
 #else
     // Notify delegate of default drawable size when it can be calculated
     CGSize defaultDrawableSize = self.bounds.size;
-    defaultDrawableSize.width *= self.layer.contentsScale;
-    defaultDrawableSize.height *= self.layer.contentsScale;
+    defaultDrawableSize.width *= self.contentScaleFactor;
+    defaultDrawableSize.height *= self.contentScaleFactor;
     [self.delegate drawableResize:defaultDrawableSize];
 #endif
 }
@@ -158,25 +158,25 @@
 - (void)setContentScaleFactor:(CGFloat)contentScaleFactor
 {
     [super setContentScaleFactor:contentScaleFactor];
-    [self resizeDrawable:self.window.screen.nativeScale];
+    [self resizeDrawable:self.contentScaleFactor];
 }
 
 - (void)layoutSubviews
 {
     [super layoutSubviews];
-    [self resizeDrawable:self.window.screen.nativeScale];
+    [self resizeDrawable:self.contentScaleFactor];
 }
 
 - (void)setFrame:(CGRect)frame
 {
     [super setFrame:frame];
-    [self resizeDrawable:self.window.screen.nativeScale];
+    [self resizeDrawable:self.contentScaleFactor];
 }
 
 - (void)setBounds:(CGRect)bounds
 {
     [super setBounds:bounds];
-    [self resizeDrawable:self.window.screen.nativeScale];
+    [self resizeDrawable:self.contentScaleFactor];
 }
 
 #endif // END AUTOMATICALLY_RESIZE

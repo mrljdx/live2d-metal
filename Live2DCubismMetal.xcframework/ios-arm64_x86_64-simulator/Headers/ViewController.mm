@@ -156,11 +156,11 @@ using namespace LAppDefine;
 
     // 表示できる最大範囲
     _viewMatrix->SetMaxScreenRect(
-                                  ViewLogicalMaxLeft,
-                                  ViewLogicalMaxRight,
-                                  ViewLogicalMaxBottom,
-                                  ViewLogicalMaxTop
-                                  );
+        ViewLogicalMaxLeft,
+        ViewLogicalMaxRight,
+        ViewLogicalMaxBottom,
+        ViewLogicalMaxTop
+    );
 }
 
 - (void)resizeScreen
