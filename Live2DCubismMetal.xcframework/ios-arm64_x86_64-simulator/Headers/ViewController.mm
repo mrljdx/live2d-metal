@@ -123,21 +123,30 @@ using namespace LAppDefine;
 
 - (void)initializeScreen
 {
-    CGRect screenRect = [[UIScreen mainScreen] bounds];
-    int width = screenRect.size.width;
-    int height = screenRect.size.height;
+    CGSize size = self.view.frame.size;
+    float width = size.width;
+    float height = size.height;
 
-    // 根据宽高比动态调整逻辑坐标系 - 与Android版本保持一致
-    float ratio = static_cast<float>(width) / static_cast<float>(height);
-    float left = -ratio;
-    float right = ratio;
-    float bottom = ViewLogicalLeft;   // -1.0f
-    float top = ViewLogicalRight;     // 1.0f
+    // 根据宽高比调整逻辑坐标系，与Android版本保持一致
+    float ratio = width / height;
+    float left, right, bottom, top;
+
+    if (width > height) {
+        left = -ratio;
+        right = ratio;
+        bottom = -1.0f;
+        top = 1.0f;
+    } else {
+        left = -1.0f;
+        right = 1.0f;
+        bottom = -1.0f / ratio;
+        top = 1.0f / ratio;
+    }
 
     _viewMatrix->SetScreenRect(left, right, bottom, top);
-    _viewMatrix->Scale(ViewScale, ViewScale);
+    _viewMatrix->Scale(LAppDefine::ViewScale, LAppDefine::ViewScale);
 
-    // 设备坐标变换 - 与Android版本保持一致
+    // 设备坐标到屏幕坐标的变换矩阵
     _deviceToScreen->LoadIdentity();
     if (width > height) {
         // 横屏模式
@@ -150,17 +159,13 @@ using namespace LAppDefine;
     }
     _deviceToScreen->TranslateRelative(-width * 0.5f, -height * 0.5f);
 
-    // 表示範囲の設定
-    _viewMatrix->SetMaxScale(ViewMaxScale); // 限界拡大率
-    _viewMatrix->SetMinScale(ViewMinScale); // 限界縮小率
-
     // 表示できる最大範囲
     _viewMatrix->SetMaxScreenRect(
-        ViewLogicalMaxLeft,
-        ViewLogicalMaxRight,
-        ViewLogicalMaxBottom,
-        ViewLogicalMaxTop
-    );
+                                  ViewLogicalMaxLeft,
+                                  ViewLogicalMaxRight,
+                                  ViewLogicalMaxBottom,
+                                  ViewLogicalMaxTop
+                                  );
 }
 
 - (void)resizeScreen
@@ -218,10 +223,13 @@ using namespace LAppDefine;
     float width = view.view.frame.size.width;
     float height = view.view.frame.size.height;
 
+    // 获取屏幕缩放因子
+    float scale = [[UIScreen mainScreen] scale];
+
     LAppTextureManager* textureManager = [delegate getTextureManager];
     const string resourcesPath = ResourcesPath;
 
-    //背景 - 拉伸填满整个屏幕
+    // 背景 - 拉伸填满整个屏幕
     string imageName = BackImageName;
     TextureInfo* backgroundTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
     if (!backgroundTexture) {
@@ -234,33 +242,35 @@ using namespace LAppDefine;
     // 背景图片强制填满整个屏幕
     float fWidth = static_cast<float>(width);
     float fHeight = static_cast<float>(height);
-
     _back = [[LAppSprite alloc] initWithMyVar:x Y:y Width:fWidth Height:fHeight MaxWidth:width MaxHeight:height Texture:backgroundTexture->id];
 
-    //モデル変更ボタン - 保持原始尺寸
+    // 模型变更按钮 - 根据屏幕密度调整尺寸和边距
     imageName = GearImageName;
     TextureInfo* gearTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
     if (!gearTexture) {
         NSLog(@"Failed to load gear texture: %s", imageName.c_str());
         return;
     }
-    x = static_cast<float>(width - gearTexture->width * 0.5f - 96.f);
-    y = static_cast<float>(height - gearTexture->height * 0.5f);
-    fWidth = static_cast<float>(gearTexture->width);
-    fHeight = static_cast<float>(gearTexture->height);
+
+    // 调整边距以适应不同屏幕密度
+    float adjustedMargin = 96.0f / scale;
+    x = static_cast<float>(width - gearTexture->width * 0.5f / scale - adjustedMargin);
+    y = static_cast<float>(height - gearTexture->height * 0.5f / scale);
+    fWidth = static_cast<float>(gearTexture->width / scale);
+    fHeight = static_cast<float>(gearTexture->height / scale);
     _gear = [[LAppSprite alloc] initWithMyVar:x Y:y Width:fWidth Height:fHeight MaxWidth:width MaxHeight:height Texture:gearTexture->id];
 
-    //電源ボタン - 保持原始尺寸
+    // 电源按钮 - 同样调整
     imageName = PowerImageName;
     TextureInfo* powerTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
     if (!powerTexture) {
         NSLog(@"Failed to load power texture: %s", imageName.c_str());
         return;
     }
-    x = static_cast<float>(width - powerTexture->width * 0.5f - 96.f);
-    y = static_cast<float>(powerTexture->height * 0.5f);
-    fWidth = static_cast<float>(powerTexture->width);
-    fHeight = static_cast<float>(powerTexture->height);
+    x = static_cast<float>(width - powerTexture->width * 0.5f / scale - adjustedMargin);
+    y = static_cast<float>(powerTexture->height * 0.5f / scale);
+    fWidth = static_cast<float>(powerTexture->width / scale);
+    fHeight = static_cast<float>(powerTexture->height / scale);
     _power = [[LAppSprite alloc] initWithMyVar:x Y:y Width:fWidth Height:fHeight MaxWidth:width MaxHeight:height Texture:powerTexture->id];
 }
 
@@ -272,6 +282,12 @@ using namespace LAppDefine;
     float maxWidth = frameSize.width;
     float maxHeight = frameSize.height;
 
+    // 获取屏幕缩放因子
+    float scale = [[UIScreen mainScreen] scale];
+
+    // 调整边距以适应不同屏幕密度
+    float adjustedMargin = 96.0f / scale;
+
     //背景 - 拉伸填满整个屏幕
     float x = width * 0.5f;
     float y = height * 0.5f;
@@ -280,17 +296,17 @@ using namespace LAppDefine;
     [_back resizeImmidiate:x Y:y Width:fWidth Height:fHeight MaxWidth:maxWidth MaxHeight:maxHeight];
 
     //モデル変更ボタン - 保持原始尺寸
-    x = static_cast<float>(width - _gear.GetTextureId.width * 0.5f - 96.f);
-    y = static_cast<float>(height - _gear.GetTextureId.height * 0.5f);
-    fWidth = static_cast<float>(_gear.GetTextureId.width);
-    fHeight = static_cast<float>(_gear.GetTextureId.height);
+    x = static_cast<float>(width - _gear.GetTextureId.width * 0.5f / scale - adjustedMargin);
+    y = static_cast<float>(height - _gear.GetTextureId.height * 0.5f / scale);
+    fWidth = static_cast<float>(_gear.GetTextureId.width / scale);
+    fHeight = static_cast<float>(_gear.GetTextureId.height / scale);
     [_gear resizeImmidiate:x Y:y Width:fWidth Height:fHeight MaxWidth:maxWidth MaxHeight:maxHeight];
 
     //電源ボタン - 保持原始尺寸
-    x = static_cast<float>(width - _power.GetTextureId.width * 0.5f - 96.f);
-    y = static_cast<float>(_power.GetTextureId.height * 0.5f);
-    fWidth = static_cast<float>(_power.GetTextureId.width);
-    fHeight = static_cast<float>(_power.GetTextureId.height);
+    x = static_cast<float>(width - _power.GetTextureId.width * 0.5f / scale - adjustedMargin);
+    y = static_cast<float>(_power.GetTextureId.height * 0.5f / scale);
+    fWidth = static_cast<float>(_power.GetTextureId.width / scale);
+    fHeight = static_cast<float>(_power.GetTextureId.height / scale);
     [_power resizeImmidiate:x Y:y Width:fWidth Height:fHeight MaxWidth:maxWidth MaxHeight:maxHeight];
 }
 
