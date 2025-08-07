@@ -12,16 +12,8 @@
 #import <MetalKit/MetalKit.h>
 #import <Type/csmVector.hpp>
 
-@protocol TextureManagerDelegate <NSObject>
-
-@property (nonatomic, nullable) id<MTLCommandQueue> commandQueue;
-@property (nonatomic, nullable, readonly) CAMetalLayer *metalLayer;
-
-@end
 
 @interface LAppTextureManager : NSObject
-
-@property (nonatomic, nullable) id<TextureManagerDelegate> delegate;
 
 /**
  * @brief 画像情報構造体
@@ -34,12 +26,17 @@ typedef struct
     std::string fileName;       ///< ファイル名
 }TextureInfo;
 
-+ (LAppTextureManager *)getInstance;
-
 /**
  * @brief 初期化
  */
 - (id)init;
+
+/**
+ * @brief 解放処理
+ *
+ */
+- (void)dealloc;
+
 
 /**
  * @brief プリマルチプライ処理

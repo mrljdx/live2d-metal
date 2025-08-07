@@ -18,6 +18,8 @@
 #import "stb_image.h"
 #pragma clang diagnostic pop
 #import "LAppPal.h"
+#import "AppDelegate.h"
+#import "ViewController.h"
 #import "MetalUIView.h"
 #import "Rendering/Metal/CubismRenderingInstanceSingleton_Metal.h"
 
@@ -29,19 +31,15 @@
 
 @implementation LAppTextureManager
 
-static LAppTextureManager* s_instance = nil;
-
-+ (LAppTextureManager *)getInstance {
-    if (s_instance == nil) {
-        s_instance = [[LAppTextureManager alloc] init];
-    }
-    return s_instance;
-}
-
 - (id)init
 {
     self = [super init];
     return self;
+}
+
+- (void)dealloc
+{
+    [self releaseTextures];
 }
 
 - (TextureInfo*) createTextureFromPngFile:(std::string)fileName
@@ -85,7 +83,7 @@ static LAppTextureManager* s_instance = nil;
 #endif
     }
 
-    MTLTextureDescriptor *textureDescriptor = [[MTLTextureDescriptor alloc] init];
+    MTLTextureDescriptor *textureDescriptor = [[[MTLTextureDescriptor alloc] init] autorelease];
 
     // Indicate that each pixel has a blue, green, red, and alpha channel, where each channel is
     // an 8-bit unsigned normalized value (i.e. 0 maps to 0.0 and 255 maps to 1.0)
@@ -120,8 +118,10 @@ static LAppTextureManager* s_instance = nil;
                   withBytes:png
                 bytesPerRow:bytesPerRow];
 
-    id<CAMetalDrawable> drawable = [_delegate.metalLayer nextDrawable];
-    id<MTLCommandBuffer> commandBuffer = [_delegate.commandQueue commandBuffer];
+    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
+    ViewController* viewController = delegate.viewController;
+    id<CAMetalDrawable> drawable = [((MetalUIView*)viewController.view).metalLayer nextDrawable];
+    id<MTLCommandBuffer> commandBuffer = [viewController.commandQueue commandBuffer];
     id<MTLBlitCommandEncoder> blitCommandEncoder = [commandBuffer blitCommandEncoder];
     [blitCommandEncoder generateMipmapsForTexture:texture];
     [blitCommandEncoder endEncoding];
@@ -147,6 +147,7 @@ static LAppTextureManager* s_instance = nil;
 
     NSError *error;
     id<MTLTexture> texture = [loader newTextureWithContentsOfURL:url options:nil error:&error];
+    [loader release];
 
     if (!texture)
     {
@@ -165,6 +166,17 @@ static LAppTextureManager* s_instance = nil;
                                  (((alpha)) << 24)   \
                                  );
 }
+- (void)releaseTextures
+{
+    for (Csm::csmUint32 i = 0; i < _textures.GetSize(); i++)
+    {
+        [ _textures[i]->id release];
+        delete _textures[i];
+        _textures.Remove(i);
+    }
+
+    _textures.Clear();
+}
 
 - (void)releaseTextureWithId:(id <MTLTexture>) textureId
 {
@@ -174,6 +186,7 @@ static LAppTextureManager* s_instance = nil;
         {
             continue;
         }
+        [ _textures[i]->id release];
         delete _textures[i];
         _textures.Remove(i);
         break;
@@ -186,6 +199,7 @@ static LAppTextureManager* s_instance = nil;
     {
         if (_textures[i]->fileName == fileName)
         {
+            [ _textures[i]->id release];
             delete _textures[i];
             _textures.Remove(i);
             break;
