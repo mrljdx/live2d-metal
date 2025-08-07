@@ -219,9 +219,18 @@ using namespace LAppDefine;
     LAppTextureManager* textureManager = [delegate getTextureManager];
     const string resourcesPath = ResourcesPath;
 
+    // 添加日志：打印资源路径信息
+    NSLog(@"[DEBUG] ResourcesPath: %s", resourcesPath.c_str());
+
     //背景
     string imageName = BackImageName;
+    NSLog(@"[DEBUG] Loading background image: %s", imageName.c_str());
     TextureInfo* backgroundTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
+    if (backgroundTexture == nullptr) {
+        NSLog(@"[ERROR] Failed to load background texture: %s", (resourcesPath+imageName).c_str());
+    } else {
+        NSLog(@"[SUCCESS] Background texture loaded successfully");
+    }
     float x = width * 0.5f;
     float y = height * 0.5f;
     float fWidth = static_cast<float>(backgroundTexture->width * 2.0f);
@@ -230,6 +239,7 @@ using namespace LAppDefine;
 
     //モデル変更ボタン
     imageName = GearImageName;
+    NSLog(@"[DEBUG] Loading gear image: %s", imageName.c_str());
     TextureInfo* gearTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
     x = static_cast<float>(width - gearTexture->width * 0.5f);
     y = static_cast<float>(height - gearTexture->height * 0.5f);
@@ -239,6 +249,7 @@ using namespace LAppDefine;
 
     //電源ボタン
     imageName = PowerImageName;
+    NSLog(@"[DEBUG] Loading power image: %s", imageName.c_str());
     TextureInfo* powerTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
     x = static_cast<float>(width - powerTexture->width * 0.5f);
     y = static_cast<float>(powerTexture->height * 0.5f);
