@@ -167,12 +167,23 @@ using namespace LAppDefine;
     int width = view.view.frame.size.width;
     int height = view.view.frame.size.height;
 
-    // 縦サイズを基準とする
+    // 保持宽高比的正确计算
     float ratio = static_cast<float>(width) / static_cast<float>(height);
-    float left = -ratio;
-    float right = ratio;
-    float bottom = ViewLogicalLeft;
-    float top = ViewLogicalRight;
+    float left, right, bottom, top;
+
+    if (width > height) {
+        // 横屏：以高度为基准
+        left = -ratio;
+        right = ratio;
+        bottom = ViewLogicalBottom;
+        top = ViewLogicalTop;
+    } else {
+        // 竖屏：以宽度为基准
+        left = ViewLogicalLeft;
+        right = ViewLogicalRight;
+        bottom = -1.0f / ratio;
+        top = 1.0f / ratio;
+    }
 
     // デバイスに対応する画面の範囲。 Xの左端, Xの右端, Yの下端, Yの上端
     _viewMatrix->SetScreenRect(left, right, bottom, top);

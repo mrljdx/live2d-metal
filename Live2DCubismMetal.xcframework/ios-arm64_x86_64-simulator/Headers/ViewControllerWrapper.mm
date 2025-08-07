@@ -158,21 +158,16 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
 
-    // 如果内部 ViewController 有 view，将其添加为子视图
     if (_internalViewController && [_internalViewController isKindOfClass:[UIViewController class]]) {
         UIViewController *vc = (UIViewController *)_internalViewController;
         [self addChildViewController:vc];
         [self.view addSubview:vc.view];
         [vc didMoveToParentViewController:self];
 
-        // 设置约束使其填满整个视图
-        vc.view.translatesAutoresizingMaskIntoConstraints = NO;
-        [NSLayoutConstraint activateConstraints:@[
-                [vc.view.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-                [vc.view.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-                [vc.view.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-                [vc.view.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
-        ]];
+        // 使用autoresizing，避免约束冲突
+        vc.view.translatesAutoresizingMaskIntoConstraints = YES;
+        vc.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        vc.view.frame = self.view.bounds;
     }
 }
 
