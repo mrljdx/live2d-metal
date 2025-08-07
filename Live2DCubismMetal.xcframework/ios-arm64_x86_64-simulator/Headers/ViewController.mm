@@ -69,8 +69,8 @@ using namespace LAppDefine;
 {
     MetalUIView *metalUiView = [[MetalUIView alloc] init];
     [self setView:metalUiView];
+    [metalUiView release]; // 修复内存泄漏
 }
-
 - (void)viewDidLoad
 {
     [super viewDidLoad];
@@ -85,6 +85,10 @@ using namespace LAppDefine;
     //Fremework層でもMTLDeviceを参照するためシングルトンオブジェクトに登録
     CubismRenderingInstanceSingleton_Metal *single = [CubismRenderingInstanceSingleton_Metal sharedManager];
     id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+    if (!device) {
+        NSLog(@"Metal is not supported on this device");
+        return;
+    }
     [single setMTLDevice:device];
 
     MetalUIView *view = (MetalUIView*)self.view;
@@ -123,36 +127,29 @@ using namespace LAppDefine;
     int width = screenRect.size.width;
     int height = screenRect.size.height;
 
-    // 计算宽高比
-    float ratio = static_cast<float>(width) / static_cast<float>(height);
-    float left, right, bottom, top;
-
-    // 保持宽高比，以较小的维度为基准
-    if (ratio > 1.0f) {
-        // 横屏：以高度为基准
-        left = -ratio;
-        right = ratio;
-        bottom = -1.0f;
-        top = 1.0f;
-    } else {
-        // 竖屏：以宽度为基准
-        left = -1.0f;
-        right = 1.0f;
-        bottom = -1.0f / ratio;
-        top = 1.0f / ratio;
-    }
+    // 对于Live2D模型，使用固定的逻辑坐标系，不根据屏幕比例调整
+    float left = ViewLogicalLeft;   // -1.0f
+    float right = ViewLogicalRight; // 1.0f
+    float bottom = ViewLogicalBottom; // -1.0f
+    float top = ViewLogicalTop;     // 1.0f
 
     // デバイスに対応する画面の範囲。 Xの左端, Xの右端, Yの下端, Yの上端
     _viewMatrix->SetScreenRect(left, right, bottom, top);
     _viewMatrix->Scale(ViewScale, ViewScale);
 
-    // 修改设备坐标变换，保持宽高比
-    _deviceToScreen->LoadIdentity(); // サイズが変わった際などリセット必須
+    // 设备坐标变换 - 保持正确的宽高比
+    _deviceToScreen->LoadIdentity();
 
-    // 使用统一的缩放比例
-    float scale = 2.0f / fmin(width, height);
-    _deviceToScreen->ScaleRelative(scale, -scale);
-    _deviceToScreen->TranslateRelative(-width * 0.5f, -height * 0.5f);
+    if (width > height) {
+        // 横屏模式
+        float ratio = static_cast<float>(width) / static_cast<float>(height);
+        _deviceToScreen->ScaleRelative(2.0f / width, -2.0f / height);
+        _deviceToScreen->TranslateRelative(-width * 0.5f, -height * 0.5f);
+    } else {
+        // 竖屏模式
+        _deviceToScreen->ScaleRelative(2.0f / width, -2.0f / height);
+        _deviceToScreen->TranslateRelative(-width * 0.5f, -height * 0.5f);
+    }
 
     // 表示範囲の設定
     _viewMatrix->SetMaxScale(ViewMaxScale); // 限界拡大率
@@ -174,36 +171,28 @@ using namespace LAppDefine;
     int width = view.view.frame.size.width;
     int height = view.view.frame.size.height;
 
-    // 计算宽高比
-    float ratio = static_cast<float>(width) / static_cast<float>(height);
-    float left, right, bottom, top;
-
-    // 保持宽高比，以较小的维度为基准
-    if (ratio > 1.0f) {
-        // 横屏：以高度为基准
-        left = -ratio;
-        right = ratio;
-        bottom = -1.0f;
-        top = 1.0f;
-    } else {
-        // 竖屏：以宽度为基准
-        left = -1.0f;
-        right = 1.0f;
-        bottom = -1.0f / ratio;
-        top = 1.0f / ratio;
-    }
+    // 对于Live2D模型，使用固定的逻辑坐标系
+    float left = ViewLogicalLeft;   // -1.0f
+    float right = ViewLogicalRight; // 1.0f
+    float bottom = ViewLogicalBottom; // -1.0f
+    float top = ViewLogicalTop;     // 1.0f
 
     // デバイスに対応する画面の範囲。 Xの左端, Xの右端, Yの下端, Yの上端
     _viewMatrix->SetScreenRect(left, right, bottom, top);
     _viewMatrix->Scale(ViewScale, ViewScale);
 
-    // 修改设备坐标变换，保持宽高比
-    _deviceToScreen->LoadIdentity(); // サイズが変わった際などリセット必須
+    // 设备坐标变换 - 保持正确的宽高比
+    _deviceToScreen->LoadIdentity();
 
-    // 使用统一的缩放比例
-    float scale = 2.0f / fmin(width, height);
-    _deviceToScreen->ScaleRelative(scale, -scale);
-    _deviceToScreen->TranslateRelative(-width * 0.5f, -height * 0.5f);
+    if (width > height) {
+        // 横屏模式
+        _deviceToScreen->ScaleRelative(2.0f / width, -2.0f / height);
+        _deviceToScreen->TranslateRelative(-width * 0.5f, -height * 0.5f);
+    } else {
+        // 竖屏模式
+        _deviceToScreen->ScaleRelative(2.0f / width, -2.0f / height);
+        _deviceToScreen->TranslateRelative(-width * 0.5f, -height * 0.5f);
+    }
 
     // 表示範囲の設定
     _viewMatrix->SetMaxScale(ViewMaxScale); // 限界拡大率
@@ -232,41 +221,42 @@ using namespace LAppDefine;
     LAppTextureManager* textureManager = [delegate getTextureManager];
     const string resourcesPath = ResourcesPath;
 
-    //背景
+    //背景 - 拉伸填满整个屏幕
     string imageName = BackImageName;
     TextureInfo* backgroundTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
+    if (!backgroundTexture) {
+        NSLog(@"Failed to load background texture: %s", imageName.c_str());
+        return;
+    }
+
     float x = width * 0.5f;
     float y = height * 0.5f;
-    // 计算保持宽高比的尺寸
-    float textureRatio = static_cast<float>(backgroundTexture->width) / static_cast<float>(backgroundTexture->height);
-    float screenRatio = static_cast<float>(width) / static_cast<float>(height);
-
-    float fWidth, fHeight;
-
-    if (textureRatio > screenRatio) {
-        // 纹理更宽，以屏幕宽度为基准
-        fWidth = static_cast<float>(width);
-        fHeight = fWidth / textureRatio;
-    } else {
-        // 纹理更高，以屏幕高度为基准
-        fHeight = static_cast<float>(height);
-        fWidth = fHeight * textureRatio;
-    }
+    // 背景图片强制填满整个屏幕
+    float fWidth = static_cast<float>(width);
+    float fHeight = static_cast<float>(height);
 
     _back = [[LAppSprite alloc] initWithMyVar:x Y:y Width:fWidth Height:fHeight MaxWidth:width MaxHeight:height Texture:backgroundTexture->id];
 
-    //モデル変更ボタン
+    //モデル変更ボタン - 保持原始尺寸
     imageName = GearImageName;
     TextureInfo* gearTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
+    if (!gearTexture) {
+        NSLog(@"Failed to load gear texture: %s", imageName.c_str());
+        return;
+    }
     x = static_cast<float>(width - gearTexture->width * 0.5f);
     y = static_cast<float>(height - gearTexture->height * 0.5f);
     fWidth = static_cast<float>(gearTexture->width);
     fHeight = static_cast<float>(gearTexture->height);
     _gear = [[LAppSprite alloc] initWithMyVar:x Y:y Width:fWidth Height:fHeight MaxWidth:width MaxHeight:height Texture:gearTexture->id];
 
-    //電源ボタン
+    //電源ボタン - 保持原始尺寸
     imageName = PowerImageName;
     TextureInfo* powerTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
+    if (!powerTexture) {
+        NSLog(@"Failed to load power texture: %s", imageName.c_str());
+        return;
+    }
     x = static_cast<float>(width - powerTexture->width * 0.5f);
     y = static_cast<float>(powerTexture->height * 0.5f);
     fWidth = static_cast<float>(powerTexture->width);
@@ -278,39 +268,25 @@ using namespace LAppDefine;
 {
     AppDelegate *delegate = (AppDelegate *)[[UIApplication sharedApplication] delegate];
     ViewController* view = [delegate viewController];
-    float maxWidth = view.view.frame.size.width;
-    float maxHeight = view.view.frame.size.height;
+    CGSize frameSize = view.view.frame.size;
+    float maxWidth = frameSize.width;
+    float maxHeight = frameSize.height;
 
-    //背景 - 保持宽高比
+    //背景 - 拉伸填满整个屏幕
     float x = width * 0.5f;
     float y = height * 0.5f;
-
-    // 计算保持宽高比的尺寸
-    float textureRatio = static_cast<float>(_back.GetTextureId.width) / static_cast<float>(_back.GetTextureId.height);
-    float screenRatio = static_cast<float>(width) / static_cast<float>(height);
-
-    float fWidth, fHeight;
-
-    if (textureRatio > screenRatio) {
-        // 纹理更宽，以屏幕宽度为基准
-        fWidth = static_cast<float>(width);
-        fHeight = fWidth / textureRatio;
-    } else {
-        // 纹理更高，以屏幕高度为基准
-        fHeight = static_cast<float>(height);
-        fWidth = fHeight * textureRatio;
-    }
-
+    float fWidth = static_cast<float>(width);
+    float fHeight = static_cast<float>(height);
     [_back resizeImmidiate:x Y:y Width:fWidth Height:fHeight MaxWidth:maxWidth MaxHeight:maxHeight];
 
-    //モデル変更ボタン
+    //モデル変更ボタン - 保持原始尺寸
     x = static_cast<float>(width - _gear.GetTextureId.width * 0.5f);
     y = static_cast<float>(height - _gear.GetTextureId.height * 0.5f);
     fWidth = static_cast<float>(_gear.GetTextureId.width);
     fHeight = static_cast<float>(_gear.GetTextureId.height);
     [_gear resizeImmidiate:x Y:y Width:fWidth Height:fHeight MaxWidth:maxWidth MaxHeight:maxHeight];
 
-    //電源ボタン
+    //電源ボタン - 保持原始尺寸
     x = static_cast<float>(width - _power.GetTextureId.width * 0.5f);
     y = static_cast<float>(_power.GetTextureId.height * 0.5f);
     fWidth = static_cast<float>(_power.GetTextureId.width);
