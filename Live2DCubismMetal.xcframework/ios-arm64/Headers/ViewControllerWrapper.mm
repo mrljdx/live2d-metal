@@ -154,7 +154,6 @@
     }
 }
 
-// 视图生命周期方法
 - (void)viewDidLoad {
     [super viewDidLoad];
 
@@ -164,42 +163,9 @@
         [self.view addSubview:vc.view];
         [vc didMoveToParentViewController:self];
 
-        // 使用autoresizing，避免约束冲突
-        vc.view.translatesAutoresizingMaskIntoConstraints = YES;
-        vc.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        // 让内部 ViewController 完全控制自己的视图
         vc.view.frame = self.view.bounds;
-    }
-}
-
-- (void)viewWillAppear:(BOOL)animated {
-    [super viewWillAppear:animated];
-
-    if ([_internalViewController respondsToSelector:@selector(viewWillAppear:)]) {
-        [_internalViewController performSelector:@selector(viewWillAppear:) withObject:@(animated)];
-    }
-}
-
-- (void)viewDidAppear:(BOOL)animated {
-    [super viewDidAppear:animated];
-
-    if ([_internalViewController respondsToSelector:@selector(viewDidAppear:)]) {
-        [_internalViewController performSelector:@selector(viewDidAppear:) withObject:@(animated)];
-    }
-}
-
-- (void)viewWillDisappear:(BOOL)animated {
-    [super viewWillDisappear:animated];
-
-    if ([_internalViewController respondsToSelector:@selector(viewWillDisappear:)]) {
-        [_internalViewController performSelector:@selector(viewWillDisappear:) withObject:@(animated)];
-    }
-}
-
-- (void)viewDidDisappear:(BOOL)animated {
-    [super viewDidDisappear:animated];
-
-    if ([_internalViewController respondsToSelector:@selector(viewDidDisappear:)]) {
-        [_internalViewController performSelector:@selector(viewDidDisappear:) withObject:@(animated)];
+        vc.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     }
 }
 

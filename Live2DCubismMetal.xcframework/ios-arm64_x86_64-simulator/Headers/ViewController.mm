@@ -127,8 +127,8 @@ using namespace LAppDefine;
     float ratio = static_cast<float>(width) / static_cast<float>(height);
     float left = -ratio;
     float right = ratio;
-    float bottom = ViewLogicalBottom;
-    float top = ViewLogicalTop;
+    float bottom = ViewLogicalLeft;
+    float top = ViewLogicalRight;
 
     // デバイスに対応する画面の範囲。 Xの左端, Xの右端, Yの下端, Yの上端
     _viewMatrix->SetScreenRect(left, right, bottom, top);
@@ -167,23 +167,12 @@ using namespace LAppDefine;
     int width = view.view.frame.size.width;
     int height = view.view.frame.size.height;
 
-    // 保持宽高比的正确计算
+    // 縦サイズを基準とする
     float ratio = static_cast<float>(width) / static_cast<float>(height);
-    float left, right, bottom, top;
-
-    if (width > height) {
-        // 横屏：以高度为基准
-        left = -ratio;
-        right = ratio;
-        bottom = ViewLogicalBottom;
-        top = ViewLogicalTop;
-    } else {
-        // 竖屏：以宽度为基准
-        left = ViewLogicalLeft;
-        right = ViewLogicalRight;
-        bottom = -1.0f / ratio;
-        top = 1.0f / ratio;
-    }
+    float left = -ratio;
+    float right = ratio;
+    float bottom = ViewLogicalLeft;
+    float top = ViewLogicalRight;
 
     // デバイスに対応する画面の範囲。 Xの左端, Xの右端, Yの下端, Yの上端
     _viewMatrix->SetScreenRect(left, right, bottom, top);
@@ -230,18 +219,9 @@ using namespace LAppDefine;
     LAppTextureManager* textureManager = [delegate getTextureManager];
     const string resourcesPath = ResourcesPath;
 
-    // 添加日志：打印资源路径信息
-    NSLog(@"[DEBUG] ResourcesPath: %s", resourcesPath.c_str());
-
     //背景
     string imageName = BackImageName;
-    NSLog(@"[DEBUG] Loading background image: %s", imageName.c_str());
     TextureInfo* backgroundTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
-    if (backgroundTexture == nullptr) {
-        NSLog(@"[ERROR] Failed to load background texture: %s", (resourcesPath+imageName).c_str());
-    } else {
-        NSLog(@"[SUCCESS] Background texture loaded successfully");
-    }
     float x = width * 0.5f;
     float y = height * 0.5f;
     float fWidth = static_cast<float>(backgroundTexture->width * 2.0f);
@@ -250,7 +230,6 @@ using namespace LAppDefine;
 
     //モデル変更ボタン
     imageName = GearImageName;
-    NSLog(@"[DEBUG] Loading gear image: %s", imageName.c_str());
     TextureInfo* gearTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
     x = static_cast<float>(width - gearTexture->width * 0.5f);
     y = static_cast<float>(height - gearTexture->height * 0.5f);
@@ -260,7 +239,6 @@ using namespace LAppDefine;
 
     //電源ボタン
     imageName = PowerImageName;
-    NSLog(@"[DEBUG] Loading power image: %s", imageName.c_str());
     TextureInfo* powerTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
     x = static_cast<float>(width - powerTexture->width * 0.5f);
     y = static_cast<float>(powerTexture->height * 0.5f);
@@ -404,22 +382,11 @@ using namespace LAppDefine;
 
 - (void)renderSprite:(id<MTLRenderCommandEncoder>)renderEncoder
 {
-    NSLog(@"[DEBUG] renderSprite called");
+    [_back renderImmidiate:renderEncoder];
 
-    if (_back != nil) {
-        NSLog(@"[DEBUG] Rendering background sprite, pipelineState: %@", _back.pipelineState);
-        [_back renderImmidiate:renderEncoder];
-    }
+    [_gear renderImmidiate:renderEncoder];
 
-    if (_gear != nil) {
-        NSLog(@"[DEBUG] Rendering gear sprite, pipelineState: %@", _gear.pipelineState);
-        [_gear renderImmidiate:renderEncoder];
-    }
-
-    if (_power != nil) {
-        NSLog(@"[DEBUG] Rendering power sprite, pipelineState: %@", _power.pipelineState);
-        [_power renderImmidiate:renderEncoder];
-    }
+    [_power renderImmidiate:renderEncoder];
 }
 
 - (void)renderToMetalLayer:(nonnull CAMetalLayer *)layer
