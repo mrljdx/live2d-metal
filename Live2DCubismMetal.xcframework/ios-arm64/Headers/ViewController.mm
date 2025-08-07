@@ -123,28 +123,35 @@ using namespace LAppDefine;
     int width = screenRect.size.width;
     int height = screenRect.size.height;
 
-    // 縦サイズを基準とする
+    // 计算宽高比
     float ratio = static_cast<float>(width) / static_cast<float>(height);
-    float left = -ratio;
-    float right = ratio;
-    float bottom = ViewLogicalLeft;
-    float top = ViewLogicalRight;
+    float left, right, bottom, top;
+
+    // 保持宽高比，以较小的维度为基准
+    if (ratio > 1.0f) {
+        // 横屏：以高度为基准
+        left = -ratio;
+        right = ratio;
+        bottom = -1.0f;
+        top = 1.0f;
+    } else {
+        // 竖屏：以宽度为基准
+        left = -1.0f;
+        right = 1.0f;
+        bottom = -1.0f / ratio;
+        top = 1.0f / ratio;
+    }
 
     // デバイスに対応する画面の範囲。 Xの左端, Xの右端, Yの下端, Yの上端
     _viewMatrix->SetScreenRect(left, right, bottom, top);
     _viewMatrix->Scale(ViewScale, ViewScale);
 
+    // 修改设备坐标变换，保持宽高比
     _deviceToScreen->LoadIdentity(); // サイズが変わった際などリセット必須
-    if (width > height)
-    {
-        float screenW = fabsf(right - left);
-        _deviceToScreen->ScaleRelative(screenW / width, -screenW / width);
-    }
-    else
-    {
-        float screenH = fabsf(top - bottom);
-        _deviceToScreen->ScaleRelative(screenH / height, -screenH / height);
-    }
+
+    // 使用统一的缩放比例
+    float scale = 2.0f / fmin(width, height);
+    _deviceToScreen->ScaleRelative(scale, -scale);
     _deviceToScreen->TranslateRelative(-width * 0.5f, -height * 0.5f);
 
     // 表示範囲の設定
@@ -167,28 +174,35 @@ using namespace LAppDefine;
     int width = view.view.frame.size.width;
     int height = view.view.frame.size.height;
 
-    // 縦サイズを基準とする
+    // 计算宽高比
     float ratio = static_cast<float>(width) / static_cast<float>(height);
-    float left = -ratio;
-    float right = ratio;
-    float bottom = ViewLogicalLeft;
-    float top = ViewLogicalRight;
+    float left, right, bottom, top;
+
+    // 保持宽高比，以较小的维度为基准
+    if (ratio > 1.0f) {
+        // 横屏：以高度为基准
+        left = -ratio;
+        right = ratio;
+        bottom = -1.0f;
+        top = 1.0f;
+    } else {
+        // 竖屏：以宽度为基准
+        left = -1.0f;
+        right = 1.0f;
+        bottom = -1.0f / ratio;
+        top = 1.0f / ratio;
+    }
 
     // デバイスに対応する画面の範囲。 Xの左端, Xの右端, Yの下端, Yの上端
     _viewMatrix->SetScreenRect(left, right, bottom, top);
     _viewMatrix->Scale(ViewScale, ViewScale);
 
+    // 修改设备坐标变换，保持宽高比
     _deviceToScreen->LoadIdentity(); // サイズが変わった際などリセット必須
-    if (width > height)
-    {
-        float screenW = fabsf(right - left);
-        _deviceToScreen->ScaleRelative(screenW / width, -screenW / width);
-    }
-    else
-    {
-        float screenH = fabsf(top - bottom);
-        _deviceToScreen->ScaleRelative(screenH / height, -screenH / height);
-    }
+
+    // 使用统一的缩放比例
+    float scale = 2.0f / fmin(width, height);
+    _deviceToScreen->ScaleRelative(scale, -scale);
     _deviceToScreen->TranslateRelative(-width * 0.5f, -height * 0.5f);
 
     // 表示範囲の設定
@@ -206,7 +220,6 @@ using namespace LAppDefine;
 #if TARGET_OS_MACCATALYST
     [self resizeSprite:width Height:height];
 #endif
-
 }
 
 - (void)initializeSprite
@@ -224,8 +237,22 @@ using namespace LAppDefine;
     TextureInfo* backgroundTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
     float x = width * 0.5f;
     float y = height * 0.5f;
-    float fWidth = static_cast<float>(backgroundTexture->width * 2.0f);
-    float fHeight = static_cast<float>(height) * 0.95f;
+    // 计算保持宽高比的尺寸
+    float textureRatio = static_cast<float>(backgroundTexture->width) / static_cast<float>(backgroundTexture->height);
+    float screenRatio = static_cast<float>(width) / static_cast<float>(height);
+
+    float fWidth, fHeight;
+
+    if (textureRatio > screenRatio) {
+        // 纹理更宽，以屏幕宽度为基准
+        fWidth = static_cast<float>(width);
+        fHeight = fWidth / textureRatio;
+    } else {
+        // 纹理更高，以屏幕高度为基准
+        fHeight = static_cast<float>(height);
+        fWidth = fHeight * textureRatio;
+    }
+
     _back = [[LAppSprite alloc] initWithMyVar:x Y:y Width:fWidth Height:fHeight MaxWidth:width MaxHeight:height Texture:backgroundTexture->id];
 
     //モデル変更ボタン
@@ -254,11 +281,26 @@ using namespace LAppDefine;
     float maxWidth = view.view.frame.size.width;
     float maxHeight = view.view.frame.size.height;
 
-    //背景
+    //背景 - 保持宽高比
     float x = width * 0.5f;
     float y = height * 0.5f;
-    float fWidth = static_cast<float>(_back.GetTextureId.width * 2.0f);
-    float fHeight = static_cast<float>(height) * 0.95f;
+
+    // 计算保持宽高比的尺寸
+    float textureRatio = static_cast<float>(_back.GetTextureId.width) / static_cast<float>(_back.GetTextureId.height);
+    float screenRatio = static_cast<float>(width) / static_cast<float>(height);
+
+    float fWidth, fHeight;
+
+    if (textureRatio > screenRatio) {
+        // 纹理更宽，以屏幕宽度为基准
+        fWidth = static_cast<float>(width);
+        fHeight = fWidth / textureRatio;
+    } else {
+        // 纹理更高，以屏幕高度为基准
+        fHeight = static_cast<float>(height);
+        fWidth = fHeight * textureRatio;
+    }
+
     [_back resizeImmidiate:x Y:y Width:fWidth Height:fHeight MaxWidth:maxWidth MaxHeight:maxHeight];
 
     //モデル変更ボタン
