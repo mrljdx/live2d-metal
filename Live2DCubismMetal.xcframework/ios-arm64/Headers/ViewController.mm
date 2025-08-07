@@ -127,8 +127,8 @@ using namespace LAppDefine;
     float ratio = static_cast<float>(width) / static_cast<float>(height);
     float left = -ratio;
     float right = ratio;
-    float bottom = ViewLogicalLeft;
-    float top = ViewLogicalRight;
+    float bottom = ViewLogicalBottom;
+    float top = ViewLogicalTop;
 
     // デバイスに対応する画面の範囲。 Xの左端, Xの右端, Yの下端, Yの上端
     _viewMatrix->SetScreenRect(left, right, bottom, top);
@@ -393,11 +393,22 @@ using namespace LAppDefine;
 
 - (void)renderSprite:(id<MTLRenderCommandEncoder>)renderEncoder
 {
-    [_back renderImmidiate:renderEncoder];
+    NSLog(@"[DEBUG] renderSprite called");
 
-    [_gear renderImmidiate:renderEncoder];
+    if (_back != nil) {
+        NSLog(@"[DEBUG] Rendering background sprite, pipelineState: %@", _back.pipelineState);
+        [_back renderImmidiate:renderEncoder];
+    }
 
-    [_power renderImmidiate:renderEncoder];
+    if (_gear != nil) {
+        NSLog(@"[DEBUG] Rendering gear sprite, pipelineState: %@", _gear.pipelineState);
+        [_gear renderImmidiate:renderEncoder];
+    }
+
+    if (_power != nil) {
+        NSLog(@"[DEBUG] Rendering power sprite, pipelineState: %@", _power.pipelineState);
+        [_power renderImmidiate:renderEncoder];
+    }
 }
 
 - (void)renderToMetalLayer:(nonnull CAMetalLayer *)layer
