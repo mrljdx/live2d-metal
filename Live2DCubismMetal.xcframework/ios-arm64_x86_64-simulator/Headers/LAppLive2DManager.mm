@@ -276,6 +276,9 @@ Csm::csmString GetPath(CFURLRef url)
             continue;
         }
 
+        // 在每次循环开始时重置投影矩阵为单位矩阵
+        projection.LoadIdentity();
+
         // 移除复杂的分支逻辑，使用统一的适应性缩放
         float screenAspect = static_cast<float>(width) / static_cast<float>(height);
         float modelAspect = model->GetModel()->GetCanvasWidth() / model->GetModel()->GetCanvasHeight();
