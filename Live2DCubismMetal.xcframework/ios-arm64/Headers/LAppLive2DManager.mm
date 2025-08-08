@@ -276,15 +276,24 @@ Csm::csmString GetPath(CFURLRef url)
             continue;
         }
 
-        if (model->GetModel()->GetCanvasWidth() > 1.0f && width < height)
+        // 计算屏幕和模型的宽高比
+        float screenAspect = width / height;
+        float modelCanvasWidth = model->GetModel()->GetCanvasWidth();
+        float modelCanvasHeight = model->GetModel()->GetCanvasHeight();
+        float modelAspect = modelCanvasWidth / modelCanvasHeight;
+
+        // 保持宽高比的缩放计算
+        if (screenAspect > modelAspect)
         {
-            // 横に長いモデルを縦長ウィンドウに表示する際モデルの横サイズでscaleを算出する
-            model->GetModelMatrix()->SetWidth(2.0f);
-            projection.Scale(1.0f, static_cast<float>(width) / static_cast<float>(height));
+            // 屏幕更宽，模型需要在Y轴方向缩放以适应屏幕高度
+            float scale = screenAspect / modelAspect;
+            projection.Scale(1.0f, scale);
         }
         else
         {
-            projection.Scale(static_cast<float>(height) / static_cast<float>(width), 1.0f);
+             // 屏幕更高，模型需要在X轴方向缩放以适应屏幕宽度
+            float scale = modelAspect / screenAspect;
+            projection.Scale(scale, 1.0f);
         }
 
         // 必要があればここで乗算
