@@ -85,10 +85,6 @@ using namespace LAppDefine;
     //Fremework層でもMTLDeviceを参照するためシングルトンオブジェクトに登録
     CubismRenderingInstanceSingleton_Metal *single = [CubismRenderingInstanceSingleton_Metal sharedManager];
     id<MTLDevice> device = MTLCreateSystemDefaultDevice();
-    if (!device) {
-        NSLog(@"Metal is not supported on this device");
-        return;
-    }
     [single setMTLDevice:device];
 
     MetalUIView *view = (MetalUIView*)self.view;
@@ -128,31 +124,50 @@ using namespace LAppDefine;
     int height = screenRect.size.height;
 
     // 縦サイズを基準とする
-    float ratio = static_cast<float>(width) / static_cast<float>(height);
-    float left = -ratio;
-    float right = ratio;
-    float bottom = ViewLogicalLeft;
-    float top = ViewLogicalRight;
+    //float ratio = static_cast<float>(width) / static_cast<float>(height);
+    float left = ViewLogicalLeft;
+    float right = ViewLogicalRight;
+    float bottom = ViewLogicalBottom;
+    float top = ViewLogicalTop;
+
+    // 根据屏幕宽高比调整缩放，但保持模型不变形
+    float screenAspect = static_cast<float>(width) / static_cast<float>(height);
+
+    if (screenAspect > 1.0f)
+    {
+        // 扩展左右范围以适应更宽的屏幕
+        float extend = (screenAspect - 1.0f) * (right - left) * 0.5f;
+        left -= extend;
+        right += extend;
+    }
+    else
+    {
+        // 扩展上下范围以适应更高的屏幕
+        float extend = (1.0f / screenAspect - 1.0f) * (top - bottom) * 0.5f;
+        bottom -= extend;
+        top += extend;
+    }
 
     // デバイスに対応する画面の範囲。 Xの左端, Xの右端, Yの下端, Yの上端
     _viewMatrix->SetScreenRect(left, right, bottom, top);
     _viewMatrix->Scale(ViewScale, ViewScale);
 
-    // 设备坐标到屏幕坐标的变换矩阵
-    _deviceToScreen->LoadIdentity();
+    _deviceToScreen->LoadIdentity(); // サイズが変わった際などリセット必須
     if (width > height)
     {
-        // 横屏模式
         float screenW = fabsf(right - left);
         _deviceToScreen->ScaleRelative(screenW / width, -screenW / width);
     }
     else
     {
-        // 竖屏模式
         float screenH = fabsf(top - bottom);
         _deviceToScreen->ScaleRelative(screenH / height, -screenH / height);
     }
     _deviceToScreen->TranslateRelative(-width * 0.5f, -height * 0.5f);
+
+    // 表示範囲の設定
+    _viewMatrix->SetMaxScale(ViewMaxScale); // 限界拡大率
+    _viewMatrix->SetMinScale(ViewMinScale); // 限界縮小率
 
     // 表示できる最大範囲
     _viewMatrix->SetMaxScreenRect(
@@ -170,28 +185,43 @@ using namespace LAppDefine;
     int width = view.view.frame.size.width;
     int height = view.view.frame.size.height;
 
-    // 根据宽高比动态调整逻辑坐标系
-    float ratio = static_cast<float>(width) / static_cast<float>(height);
-    float left = -ratio;
-    float right = ratio;
-    float bottom = ViewLogicalLeft;
-    float top = ViewLogicalRight;
+    // 縦サイズを基準とする
+    //float ratio = static_cast<float>(width) / static_cast<float>(height);
+    float left = ViewLogicalLeft;
+    float right = ViewLogicalRight;
+    float bottom = ViewLogicalBottom;
+    float top = ViewLogicalTop;
 
+    // 根据屏幕宽高比调整缩放，但保持模型不变形
+    float screenAspect = static_cast<float>(width) / static_cast<float>(height);
+
+    if (screenAspect > 1.0f)
+    {
+        // 扩展左右范围以适应更宽的屏幕
+        float extend = (screenAspect - 1.0f) * (right - left) * 0.5f;
+        left -= extend;
+        right += extend;
+    }
+    else
+    {
+        // 扩展上下范围以适应更高的屏幕
+        float extend = (1.0f / screenAspect - 1.0f) * (top - bottom) * 0.5f;
+        bottom -= extend;
+        top += extend;
+    }
+
+    // デバイスに対応する画面の範囲。 Xの左端, Xの右端, Yの下端, Yの上端
     _viewMatrix->SetScreenRect(left, right, bottom, top);
     _viewMatrix->Scale(ViewScale, ViewScale);
 
-    // 设备坐标变换
-    _deviceToScreen->LoadIdentity();
-
+    _deviceToScreen->LoadIdentity(); // サイズが変わった際などリセット必須
     if (width > height)
     {
-        // 横屏模式
         float screenW = fabsf(right - left);
         _deviceToScreen->ScaleRelative(screenW / width, -screenW / width);
     }
     else
     {
-        // 竖屏模式
         float screenH = fabsf(top - bottom);
         _deviceToScreen->ScaleRelative(screenH / height, -screenH / height);
     }
@@ -228,38 +258,25 @@ using namespace LAppDefine;
     //背景
     string imageName = BackImageName;
     TextureInfo* backgroundTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
-    if (!backgroundTexture) {
-        NSLog(@"Failed to load background texture: %s", imageName.c_str());
-        return;
-    }
-
     float x = width * 0.5f;
     float y = height * 0.5f;
-    // 背景图片强制填满整个屏幕
+    //背景图片强制填满整个屏幕
     float fWidth = static_cast<float>(width);
     float fHeight = static_cast<float>(height);
     _back = [[LAppSprite alloc] initWithMyVar:x Y:y Width:fWidth Height:fHeight MaxWidth:width MaxHeight:height Texture:backgroundTexture->id];
 
-    // 模型变更按钮
+    //モデル変更ボタン
     imageName = GearImageName;
     TextureInfo* gearTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
-    if (!gearTexture) {
-        NSLog(@"Failed to load gear texture: %s", imageName.c_str());
-        return;
-    }
     x = static_cast<float>(width - gearTexture->width * 0.5f);
     y = static_cast<float>(height - gearTexture->height * 0.5f);
     fWidth = static_cast<float>(gearTexture->width);
     fHeight = static_cast<float>(gearTexture->height);
     _gear = [[LAppSprite alloc] initWithMyVar:x Y:y Width:fWidth Height:fHeight MaxWidth:width MaxHeight:height Texture:gearTexture->id];
 
-    // 电源按钮
+    //電源ボタン
     imageName = PowerImageName;
     TextureInfo* powerTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
-    if (!powerTexture) {
-        NSLog(@"Failed to load power texture: %s", imageName.c_str());
-        return;
-    }
     x = static_cast<float>(width - powerTexture->width * 0.5f);
     y = static_cast<float>(powerTexture->height * 0.5f);
     fWidth = static_cast<float>(powerTexture->width);
@@ -277,6 +294,7 @@ using namespace LAppDefine;
     //背景
     float x = width * 0.5f;
     float y = height * 0.5f;
+    //使用渲染的屏幕尺寸作为背景尺寸
     float fWidth = static_cast<float>(width);
     float fHeight = static_cast<float>(height);
     [_back resizeImmidiate:x Y:y Width:fWidth Height:fHeight MaxWidth:maxWidth MaxHeight:maxHeight];
