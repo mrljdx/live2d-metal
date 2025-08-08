@@ -1,5 +1,4 @@
 #import "ViewControllerWrapper.h"
-// 移除 #import "ViewController.h" - 避免 C++ 依赖导致的编译错误
 
 @interface ViewControllerWrapper ()
 @property (nonatomic, strong) id internalViewController;
@@ -81,77 +80,6 @@
     }
     NSLog(@"Warning: transformViewY method not available, returning original value");
     return deviceY;
-}
-
-- (float)transformScreenX:(float)deviceX {
-    if ([_internalViewController respondsToSelector:@selector(transformScreenX:)]) {
-        NSMethodSignature *signature = [_internalViewController methodSignatureForSelector:@selector(transformScreenX:)];
-        if (signature) {
-            NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
-            [invocation setTarget:_internalViewController];
-            [invocation setSelector:@selector(transformScreenX:)];
-            [invocation setArgument:&deviceX atIndex:2];
-            [invocation invoke];
-
-            float result;
-            [invocation getReturnValue:&result];
-            return result;
-        }
-    }
-    NSLog(@"Warning: transformScreenX method not available, returning original value");
-    return deviceX;
-}
-
-- (float)transformScreenY:(float)deviceY {
-    if ([_internalViewController respondsToSelector:@selector(transformScreenY:)]) {
-        NSMethodSignature *signature = [_internalViewController methodSignatureForSelector:@selector(transformScreenY:)];
-        if (signature) {
-            NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
-            [invocation setTarget:_internalViewController];
-            [invocation setSelector:@selector(transformScreenY:)];
-            [invocation setArgument:&deviceY atIndex:2];
-            [invocation invoke];
-
-            float result;
-            [invocation getReturnValue:&result];
-            return result;
-        }
-    }
-    NSLog(@"Warning: transformScreenY method not available, returning original value");
-    return deviceY;
-}
-
-// 转发触摸事件方法
-- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    if ([_internalViewController respondsToSelector:@selector(touchesBegan:withEvent:)]) {
-        [_internalViewController performSelector:@selector(touchesBegan:withEvent:) withObject:touches withObject:event];
-    } else {
-        [super touchesBegan:touches withEvent:event];
-    }
-}
-
-- (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    if ([_internalViewController respondsToSelector:@selector(touchesMoved:withEvent:)]) {
-        [_internalViewController performSelector:@selector(touchesMoved:withEvent:) withObject:touches withObject:event];
-    } else {
-        [super touchesMoved:touches withEvent:event];
-    }
-}
-
-- (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    if ([_internalViewController respondsToSelector:@selector(touchesEnded:withEvent:)]) {
-        [_internalViewController performSelector:@selector(touchesEnded:withEvent:) withObject:touches withObject:event];
-    } else {
-        [super touchesEnded:touches withEvent:event];
-    }
-}
-
-- (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    if ([_internalViewController respondsToSelector:@selector(touchesCancelled:withEvent:)]) {
-        [_internalViewController performSelector:@selector(touchesCancelled:withEvent:) withObject:touches withObject:event];
-    } else {
-        [super touchesCancelled:touches withEvent:event];
-    }
 }
 
 - (void)viewDidLoad {
