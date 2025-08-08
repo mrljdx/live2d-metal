@@ -276,25 +276,22 @@ Csm::csmString GetPath(CFURLRef url)
             continue;
         }
 
-        // 计算屏幕和模型的宽高比
-        float screenAspect = width / height;
-        float modelCanvasWidth = model->GetModel()->GetCanvasWidth();
-        float modelCanvasHeight = model->GetModel()->GetCanvasHeight();
-        float modelAspect = modelCanvasWidth / modelCanvasHeight;
+        // 移除复杂的分支逻辑，使用统一的适应性缩放
+        float screenAspect = static_cast<float>(width) / static_cast<float>(height);
+        float modelAspect = model->GetModel()->GetCanvasWidth() / model->GetModel()->GetCanvasHeight();
 
-        // 保持宽高比的缩放计算
-        if (screenAspect > modelAspect)
-        {
-            // 屏幕更宽，模型需要在Y轴方向缩放以适应屏幕高度
-            float scale = screenAspect / modelAspect;
-            projection.Scale(1.0f, scale);
+        float scaleX = 1.0f;
+        float scaleY = 1.0f;
+
+        if (screenAspect > modelAspect) {
+            // 屏幕更宽，缩放X轴适应
+            scaleX = modelAspect / screenAspect;
+        } else {
+            // 屏幕更高，缩放Y轴适应
+            scaleY = screenAspect / modelAspect;
         }
-        else
-        {
-             // 屏幕更高，模型需要在X轴方向缩放以适应屏幕宽度
-            float scale = modelAspect / screenAspect;
-            projection.Scale(scale, 1.0f);
-        }
+
+        projection.Scale(scaleX, scaleY);
 
         // 必要があればここで乗算
         if (_viewMatrix != NULL)

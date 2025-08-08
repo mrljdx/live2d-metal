@@ -124,29 +124,11 @@ using namespace LAppDefine;
     int height = screenRect.size.height;
 
     // 縦サイズを基準とする
-    //float ratio = static_cast<float>(width) / static_cast<float>(height);
-    float left = ViewLogicalLeft;
-    float right = ViewLogicalRight;
-    float bottom = ViewLogicalBottom;
-    float top = ViewLogicalTop;
-
-    // 根据屏幕宽高比调整缩放，但保持模型不变形
-    float screenAspect = static_cast<float>(width) / static_cast<float>(height);
-
-    if (screenAspect > 1.0f)
-    {
-        // 扩展左右范围以适应更宽的屏幕
-        float extend = (screenAspect - 1.0f) * (right - left) * 0.5f;
-        left -= extend;
-        right += extend;
-    }
-    else
-    {
-        // 扩展上下范围以适应更高的屏幕
-        float extend = (1.0f / screenAspect - 1.0f) * (top - bottom) * 0.5f;
-        bottom -= extend;
-        top += extend;
-    }
+    float ratio = static_cast<float>(width) / static_cast<float>(height);
+    float left = -ratio;
+    float right = ratio;
+    float bottom = ViewLogicalLeft;
+    float top = ViewLogicalRight;
 
     // デバイスに対応する画面の範囲。 Xの左端, Xの右端, Yの下端, Yの上端
     _viewMatrix->SetScreenRect(left, right, bottom, top);
@@ -186,29 +168,11 @@ using namespace LAppDefine;
     int height = view.view.frame.size.height;
 
     // 縦サイズを基準とする
-    //float ratio = static_cast<float>(width) / static_cast<float>(height);
-    float left = ViewLogicalLeft;
-    float right = ViewLogicalRight;
-    float bottom = ViewLogicalBottom;
-    float top = ViewLogicalTop;
-
-    // 根据屏幕宽高比调整缩放，但保持模型不变形
-    float screenAspect = static_cast<float>(width) / static_cast<float>(height);
-
-    if (screenAspect > 1.0f)
-    {
-        // 扩展左右范围以适应更宽的屏幕
-        float extend = (screenAspect - 1.0f) * (right - left) * 0.5f;
-        left -= extend;
-        right += extend;
-    }
-    else
-    {
-        // 扩展上下范围以适应更高的屏幕
-        float extend = (1.0f / screenAspect - 1.0f) * (top - bottom) * 0.5f;
-        bottom -= extend;
-        top += extend;
-    }
+    float ratio = static_cast<float>(width) / static_cast<float>(height);
+    float left = -ratio;
+    float right = ratio;
+    float bottom = ViewLogicalLeft;
+    float top = ViewLogicalRight;
 
     // デバイスに対応する画面の範囲。 Xの左端, Xの右端, Yの下端, Yの上端
     _viewMatrix->SetScreenRect(left, right, bottom, top);
