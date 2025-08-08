@@ -276,25 +276,16 @@ Csm::csmString GetPath(CFURLRef url)
             continue;
         }
 
-        // 在每次循环开始时重置投影矩阵为单位矩阵
-        projection.LoadIdentity();
-
-        // 移除复杂的分支逻辑，使用统一的适应性缩放
-        float screenAspect = static_cast<float>(width) / static_cast<float>(height);
-        float modelAspect = model->GetModel()->GetCanvasWidth() / model->GetModel()->GetCanvasHeight();
-
-        float scaleX = 1.0f;
-        float scaleY = 1.0f;
-
-        if (screenAspect > modelAspect) {
-            // 屏幕更宽，缩放X轴适应
-            scaleX = modelAspect / screenAspect;
-        } else {
-            // 屏幕更高，缩放Y轴适应
-            scaleY = screenAspect / modelAspect;
+        if (model->GetModel()->GetCanvasWidth() > 1.0f && width < height)
+        {
+            // 横に長いモデルを縦長ウィンドウに表示する際モデルの横サイズでscaleを算出する
+            model->GetModelMatrix()->SetWidth(2.0f);
+            projection.Scale(1.0f, static_cast<float>(width) / static_cast<float>(height));
         }
-
-        projection.Scale(scaleX, scaleY);
+        else
+        {
+            projection.Scale(static_cast<float>(height) / static_cast<float>(width), 1.0f);
+        }
 
         // 必要があればここで乗算
         if (_viewMatrix != NULL)

@@ -224,9 +224,8 @@ using namespace LAppDefine;
     TextureInfo* backgroundTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
     float x = width * 0.5f;
     float y = height * 0.5f;
-    //背景图片强制填满整个屏幕
-    float fWidth = static_cast<float>(width);
-    float fHeight = static_cast<float>(height);
+    float fWidth = static_cast<float>(backgroundTexture->width * 2.0f);
+    float fHeight = static_cast<float>(height) * 0.95f;
     _back = [[LAppSprite alloc] initWithMyVar:x Y:y Width:fWidth Height:fHeight MaxWidth:width MaxHeight:height Texture:backgroundTexture->id];
 
     //モデル変更ボタン
@@ -258,9 +257,8 @@ using namespace LAppDefine;
     //背景
     float x = width * 0.5f;
     float y = height * 0.5f;
-    //使用渲染的屏幕尺寸作为背景尺寸
-    float fWidth = static_cast<float>(width);
-    float fHeight = static_cast<float>(height);
+    float fWidth = static_cast<float>(_back.GetTextureId.width * 2.0f);
+    float fHeight = static_cast<float>(height) * 0.95f;
     [_back resizeImmidiate:x Y:y Width:fWidth Height:fHeight MaxWidth:maxWidth MaxHeight:maxHeight];
 
     //モデル変更ボタン
