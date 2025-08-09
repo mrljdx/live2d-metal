@@ -279,25 +279,16 @@ Csm::csmString GetPath(CFURLRef url)
         // 获取模型原始尺寸（Canvas尺寸）
         float modelWidth = model->GetModel()->GetCanvasWidth();
         float modelHeight = model->GetModel()->GetCanvasHeight();
-        
-        // 计算适合的缩放因子，确保模型完整显示且保持比例
-        float scaleX = (float)width / modelWidth;
-        float scaleY = (float)height / modelHeight;
-        
-        // 选择较小的缩放因子，确保模型完全显示在容器内
-        float scale = (scaleX < scaleY) ? scaleX : scaleY;
-        
-        // 使用标准投影方法，确保模型居中显示
-        float aspectRatio = (float)width / (float)height;
-        float modelAspectRatio = modelWidth / modelHeight;
 
-        // 应用最终缩放，确保模型完整显示
-        if (aspectRatio > modelAspectRatio) {
-            // 容器比模型宽，以高度为基准
-            projection.Scale(1.0f, modelAspectRatio / aspectRatio);
-        } else {
-            // 容器比模型高，以宽度为基准
-            projection.Scale(aspectRatio / modelAspectRatio, 1.0f);
+        if (model->GetModel()->GetCanvasWidth() > 1.0f && modelWidth < modelHeight)
+        {
+            // 横に長いモデルを縦長ウィンドウに表示する際モデルの横サイズでscaleを算出する
+            model->GetModelMatrix()->SetWidth(2.0f);
+            projection.Scale(1.0f, static_cast<float>(modelWidth) / static_cast<float>(modelHeight));
+        }
+        else
+        {
+            projection.Scale(static_cast<float>(modelHeight) / static_cast<float>(modelWidth), 1.0f);
         }
 
         // 重置模型矩阵
