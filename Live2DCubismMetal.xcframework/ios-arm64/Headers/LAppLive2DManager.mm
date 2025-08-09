@@ -276,24 +276,16 @@ Csm::csmString GetPath(CFURLRef url)
             continue;
         }
 
-        // 获取模型原始尺寸（Canvas尺寸）
-        float modelWidth = model->GetModel()->GetCanvasWidth();
-        float modelHeight = model->GetModel()->GetCanvasHeight();
-
-        model->GetModelMatrix()->SetWidth(2.0f);
-        // 直接根据宽高比进行缩放，无需>1.0f判断
-        if (modelWidth > modelHeight) {
-            // 横长模型
-            float scale = height / modelHeight;
-            model->GetModelMatrix()->Scale(scale, scale);
-        } else {
-            // 竖长或方形模型
-            float scale = width / modelWidth;
-            model->GetModelMatrix()->Scale(scale, scale);
+        if (model->GetModel()->GetCanvasWidth() > 1.0f && width < height)
+        {
+            // 横に長いモデルを縦長ウィンドウに表示する際モデルの横サイズでscaleを算出する
+            model->GetModelMatrix()->SetWidth(2.0f);
+            projection.Scale(1.0f, static_cast<float>(width) / static_cast<float>(height));
         }
-
-        // 重置模型矩阵
-        model->GetModelMatrix()->LoadIdentity();
+        else
+        {
+            projection.Scale(static_cast<float>(height) / static_cast<float>(width), 1.0f);
+        }
 
         // 必要があればここで乗算
         if (_viewMatrix != NULL)
