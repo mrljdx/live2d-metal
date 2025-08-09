@@ -31,9 +31,9 @@ using namespace std;
 using namespace LAppDefine;
 
 @interface ViewController ()
-@property (nonatomic) LAppSprite *back; //背景画像
-@property (nonatomic) LAppSprite *gear; //歯車画像
-@property (nonatomic) LAppSprite *power; //電源画像
+//@property (nonatomic) LAppSprite *back; //背景画像
+//@property (nonatomic) LAppSprite *gear; //歯車画像
+//@property (nonatomic) LAppSprite *power; //電源画像
 @property (nonatomic) LAppModelSprite *renderSprite; //レンダリングターゲット描画用
 @property (nonatomic) TouchManager *touchManager; ///< タッチマネージャー
 @property (nonatomic) Csm::CubismMatrix44 *deviceToScreen;///< デバイスからスクリーンへの行列
@@ -46,12 +46,12 @@ using namespace LAppDefine;
 - (void)releaseView
 {
     _renderSprite = nil;
-    [_gear release];
-    [_back release];
-    [_power release];
-    _gear = nil;
-    _back = nil;
-    _power = nil;
+//    [_gear release];
+//    [_back release];
+//    [_power release];
+//    _gear = nil;
+//    _back = nil;
+//    _power = nil;
 
     MetalUIView *view = (MetalUIView*)self.view;
 
@@ -220,31 +220,31 @@ using namespace LAppDefine;
     const string resourcesPath = ResourcesPath;
 
     //背景
-    string imageName = BackImageName;
-    TextureInfo* backgroundTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
-    float x = width * 0.5f;
-    float y = height * 0.5f;
-    float fWidth = static_cast<float>(backgroundTexture->width * 2.0f);
-    float fHeight = static_cast<float>(height) * 0.95f;
-    _back = [[LAppSprite alloc] initWithMyVar:x Y:y Width:fWidth Height:fHeight MaxWidth:width MaxHeight:height Texture:backgroundTexture->id];
+//    string imageName = BackImageName;
+//    TextureInfo* backgroundTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
+//    float x = width * 0.5f;
+//    float y = height * 0.5f;
+//    float fWidth = static_cast<float>(backgroundTexture->width * 2.0f);
+//    float fHeight = static_cast<float>(height) * 0.95f;
+//    _back = [[LAppSprite alloc] initWithMyVar:x Y:y Width:fWidth Height:fHeight MaxWidth:width MaxHeight:height Texture:backgroundTexture->id];
 
     //モデル変更ボタン
-    imageName = GearImageName;
-    TextureInfo* gearTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
-    x = static_cast<float>(width - gearTexture->width * 0.5f);
-    y = static_cast<float>(height - gearTexture->height * 0.5f);
-    fWidth = static_cast<float>(gearTexture->width);
-    fHeight = static_cast<float>(gearTexture->height);
-    _gear = [[LAppSprite alloc] initWithMyVar:x Y:y Width:fWidth Height:fHeight MaxWidth:width MaxHeight:height Texture:gearTexture->id];
+//    imageName = GearImageName;
+//    TextureInfo* gearTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
+//    x = static_cast<float>(width - gearTexture->width * 0.5f);
+//    y = static_cast<float>(height - gearTexture->height * 0.5f);
+//    fWidth = static_cast<float>(gearTexture->width);
+//    fHeight = static_cast<float>(gearTexture->height);
+//    _gear = [[LAppSprite alloc] initWithMyVar:x Y:y Width:fWidth Height:fHeight MaxWidth:width MaxHeight:height Texture:gearTexture->id];
 
     //電源ボタン
-    imageName = PowerImageName;
-    TextureInfo* powerTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
-    x = static_cast<float>(width - powerTexture->width * 0.5f);
-    y = static_cast<float>(powerTexture->height * 0.5f);
-    fWidth = static_cast<float>(powerTexture->width);
-    fHeight = static_cast<float>(powerTexture->height);
-    _power = [[LAppSprite alloc] initWithMyVar:x Y:y Width:fWidth Height:fHeight MaxWidth:width MaxHeight:height Texture:powerTexture->id];
+//    imageName = PowerImageName;
+//    TextureInfo* powerTexture = [textureManager createTextureFromPngFile:resourcesPath+imageName];
+//    x = static_cast<float>(width - powerTexture->width * 0.5f);
+//    y = static_cast<float>(powerTexture->height * 0.5f);
+//    fWidth = static_cast<float>(powerTexture->width);
+//    fHeight = static_cast<float>(powerTexture->height);
+//    _power = [[LAppSprite alloc] initWithMyVar:x Y:y Width:fWidth Height:fHeight MaxWidth:width MaxHeight:height Texture:powerTexture->id];
 }
 
 - (void)resizeSprite:(float)width Height:(float)height
@@ -255,25 +255,25 @@ using namespace LAppDefine;
     float maxHeight = view.view.frame.size.height;
 
     //背景
-    float x = width * 0.5f;
-    float y = height * 0.5f;
-    float fWidth = static_cast<float>(_back.GetTextureId.width * 2.0f);
-    float fHeight = static_cast<float>(height) * 0.95f;
-    [_back resizeImmidiate:x Y:y Width:fWidth Height:fHeight MaxWidth:maxWidth MaxHeight:maxHeight];
-
-    //モデル変更ボタン
-    x = static_cast<float>(width - _gear.GetTextureId.width * 0.5f);
-    y = static_cast<float>(height - _gear.GetTextureId.height * 0.5f);
-    fWidth = static_cast<float>(_gear.GetTextureId.width);
-    fHeight = static_cast<float>(_gear.GetTextureId.height);
-    [_gear resizeImmidiate:x Y:y Width:fWidth Height:fHeight MaxWidth:maxWidth MaxHeight:maxHeight];
-
-    //電源ボタン
-    x = static_cast<float>(width - _power.GetTextureId.width * 0.5f);
-    y = static_cast<float>(_power.GetTextureId.height * 0.5f);
-    fWidth = static_cast<float>(_power.GetTextureId.width);
-    fHeight = static_cast<float>(_power.GetTextureId.height);
-    [_power resizeImmidiate:x Y:y Width:fWidth Height:fHeight MaxWidth:maxWidth MaxHeight:maxHeight];
+//    float x = width * 0.5f;
+//    float y = height * 0.5f;
+//    float fWidth = static_cast<float>(_back.GetTextureId.width * 2.0f);
+//    float fHeight = static_cast<float>(height) * 0.95f;
+//    [_back resizeImmidiate:x Y:y Width:fWidth Height:fHeight MaxWidth:maxWidth MaxHeight:maxHeight];
+//
+//    //モデル変更ボタン
+//    x = static_cast<float>(width - _gear.GetTextureId.width * 0.5f);
+//    y = static_cast<float>(height - _gear.GetTextureId.height * 0.5f);
+//    fWidth = static_cast<float>(_gear.GetTextureId.width);
+//    fHeight = static_cast<float>(_gear.GetTextureId.height);
+//    [_gear resizeImmidiate:x Y:y Width:fWidth Height:fHeight MaxWidth:maxWidth MaxHeight:maxHeight];
+//
+//    //電源ボタン
+//    x = static_cast<float>(width - _power.GetTextureId.width * 0.5f);
+//    y = static_cast<float>(_power.GetTextureId.height * 0.5f);
+//    fWidth = static_cast<float>(_power.GetTextureId.width);
+//    fHeight = static_cast<float>(_power.GetTextureId.height);
+//    [_power resizeImmidiate:x Y:y Width:fWidth Height:fHeight MaxWidth:maxWidth MaxHeight:maxHeight];
 }
 
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
@@ -321,18 +321,19 @@ using namespace LAppDefine;
 
         [live2DManager onTap:x floatY:y];
 
+        // Button handling removed
         // 歯車にタップしたか
-        if ([_gear isHit:point.x PointY:pointY])
-        {
-            [live2DManager nextScene];
-        }
+        // if ([_gear isHit:point.x PointY:pointY])
+        // {
+        //     [live2DManager nextScene];
+        // }
 
         // 電源ボタンにタップしたか
-        if ([_power isHit:point.x PointY:pointY])
-        {
-            AppDelegate *delegate = (AppDelegate *) [[UIApplication sharedApplication] delegate];
-            [delegate finishApplication];
-        }
+        // if ([_power isHit:point.x PointY:pointY])
+        // {
+        //     AppDelegate *delegate = (AppDelegate *) [[UIApplication sharedApplication] delegate];
+        //     [delegate finishApplication];
+        // }
     }
 }
 
@@ -382,11 +383,10 @@ using namespace LAppDefine;
 
 - (void)renderSprite:(id<MTLRenderCommandEncoder>)renderEncoder
 {
-    [_back renderImmidiate:renderEncoder];
-
-    [_gear renderImmidiate:renderEncoder];
-
-    [_power renderImmidiate:renderEncoder];
+    // Background and buttons removed
+    // [_back renderImmidiate:renderEncoder];
+    // [_gear renderImmidiate:renderEncoder];
+    // [_power renderImmidiate:renderEncoder];
 }
 
 - (void)renderToMetalLayer:(nonnull CAMetalLayer *)layer
@@ -400,7 +400,7 @@ using namespace LAppDefine;
     renderPassDescriptor.colorAttachments[0].texture = currentDrawable.texture;
     renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
     renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
-    renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1);
+    renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0);
 
     id<MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
 
