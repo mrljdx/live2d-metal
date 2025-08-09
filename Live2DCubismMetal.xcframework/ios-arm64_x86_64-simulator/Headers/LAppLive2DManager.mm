@@ -276,7 +276,7 @@ Csm::csmString GetPath(CFURLRef url)
             continue;
         }
 
-        // 使用模型原始尺寸计算合适的缩放比例
+        // 使用模型原始尺寸计算合适的缩放比例，确保模型完全显示且不变形
         float modelWidth = model->GetModel()->GetCanvasWidth();
         float modelHeight = model->GetModel()->GetCanvasHeight();
         float modelAspect = modelWidth / modelHeight;
@@ -284,17 +284,25 @@ Csm::csmString GetPath(CFURLRef url)
         
         // 计算合适的缩放因子，确保模型完全可见且保持比例
         float scale;
+        
+        // 核心算法：让模型在容器内最大化显示，同时保持宽高比
         if (containerAspect > modelAspect) {
-            // 容器比模型宽，以高度为基准
-            scale = 2.0f / modelHeight;
-            model->GetModelMatrix()->SetHeight(2.0f);
-            projection.Scale(scale * modelAspect * (height / width), scale);
+            // 容器比模型宽，以高度为基准，让模型高度占满容器
+            scale = static_cast<float>(height) / modelHeight;
         } else {
-            // 容器比模型窄，以宽度为基准
-            scale = 2.0f / modelWidth;
-            model->GetModelMatrix()->SetWidth(2.0f);
-            projection.Scale(scale, scale * (width / height) / modelAspect);
+            // 容器比模型窄，以宽度为基准，让模型宽度占满容器
+            scale = static_cast<float>(width) / modelWidth;
         }
+        
+        // 将缩放因子转换为归一化坐标系（OpenGL坐标系[-1,1]）
+        float normalizedScale = 2.0f * scale / static_cast<float>(width);
+        
+        // 设置模型矩阵，确保居中显示
+        model->GetModelMatrix()->SetWidth(2.0f / normalizedScale);
+        model->GetModelMatrix()->SetHeight(2.0f / normalizedScale);
+        
+        // 应用缩放矩阵
+        projection.Scale(normalizedScale, normalizedScale);
 
         // 必要があればここで乗算
         if (_viewMatrix != NULL)
