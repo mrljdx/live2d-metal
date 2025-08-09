@@ -161,6 +161,9 @@
         // 让内部 ViewController 完全控制自己的视图
         vc.view.frame = self.view.bounds;
         vc.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        
+        // 设置内容模式为Aspect Fit以保持宽高比
+        vc.view.contentMode = UIViewContentModeScaleAspectFit;
     }
 }
 
