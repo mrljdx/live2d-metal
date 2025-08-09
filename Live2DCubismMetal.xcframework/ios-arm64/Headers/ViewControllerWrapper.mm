@@ -152,6 +152,10 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
 
+    // 设置视图控制器背景透明
+    self.view.backgroundColor = [UIColor clearColor];
+    self.view.opaque = NO;
+
     if (_internalViewController && [_internalViewController isKindOfClass:[UIViewController class]]) {
         UIViewController *vc = (UIViewController *)_internalViewController;
         [self addChildViewController:vc];
@@ -164,6 +168,10 @@
         
         // 设置内容模式为Aspect Fit以保持宽高比
         vc.view.contentMode = UIViewContentModeScaleAspectFit;
+        
+        // 确保内部视图也透明
+        vc.view.backgroundColor = [UIColor clearColor];
+        vc.view.opaque = NO;
     }
 }
 
