@@ -26,8 +26,13 @@
 - (void)initCommon
 {
     _metalLayer = (CAMetalLayer*) self.layer;
-
+    
+    // 设置透明背景支持
+    _metalLayer.opaque = NO;
+    _metalLayer.backgroundColor = [UIColor clearColor].CGColor;
+    
     self.layer.delegate = self;
+    self.backgroundColor = [UIColor clearColor];
 }
 
 //////////////////////////////////

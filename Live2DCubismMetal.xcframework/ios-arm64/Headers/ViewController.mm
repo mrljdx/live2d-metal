@@ -97,6 +97,8 @@ using namespace LAppDefine;
     view.delegate = self;
 
     view.metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
+    view.metalLayer.opaque = NO;  // 设置为非不透明
+    view.backgroundColor = [UIColor clearColor];  // 设置透明背景色
     [single setMetalLayer:view.metalLayer];
 
     _commandQueue = [device newCommandQueue];
