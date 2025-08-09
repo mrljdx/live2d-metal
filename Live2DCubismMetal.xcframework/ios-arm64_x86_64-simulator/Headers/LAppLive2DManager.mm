@@ -276,15 +276,24 @@ Csm::csmString GetPath(CFURLRef url)
             continue;
         }
 
-        if (model->GetModel()->GetCanvasWidth() > 1.0f && width < height)
-        {
-            // 横に長いモデルを縦長ウィンドウに表示する際モデルの横サイズでscaleを算出する
+        // 使用模型原始尺寸计算合适的缩放比例
+        float modelWidth = model->GetModel()->GetCanvasWidth();
+        float modelHeight = model->GetModel()->GetCanvasHeight();
+        float modelAspect = modelWidth / modelHeight;
+        float containerAspect = static_cast<float>(width) / static_cast<float>(height);
+        
+        // 计算合适的缩放因子，确保模型完全可见且保持比例
+        float scale;
+        if (containerAspect > modelAspect) {
+            // 容器比模型宽，以高度为基准
+            scale = 2.0f / modelHeight;
+            model->GetModelMatrix()->SetHeight(2.0f);
+            projection.Scale(scale * modelAspect * (height / width), scale);
+        } else {
+            // 容器比模型窄，以宽度为基准
+            scale = 2.0f / modelWidth;
             model->GetModelMatrix()->SetWidth(2.0f);
-            projection.Scale(1.0f, static_cast<float>(width) / static_cast<float>(height));
-        }
-        else
-        {
-            projection.Scale(static_cast<float>(height) / static_cast<float>(width), 1.0f);
+            projection.Scale(scale, scale * (width / height) / modelAspect);
         }
 
         // 必要があればここで乗算
