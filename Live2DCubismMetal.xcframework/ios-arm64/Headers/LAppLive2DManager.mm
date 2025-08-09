@@ -279,25 +279,24 @@ Csm::csmString GetPath(CFURLRef url)
         // 获取模型原始尺寸（Canvas尺寸）
         float modelWidth = model->GetModel()->GetCanvasWidth();
         float modelHeight = model->GetModel()->GetCanvasHeight();
-
-        // 计算保持比例的缩放因子，确保模型填充容器
-        float scaleX = width / modelWidth;
-        float scaleY = height / modelHeight;
         
-        // 使用较大的缩放因子确保填充整个容器（可能会裁剪部分模型）
-        float uniformScale = std::max(scaleX, scaleY);
+        // 使用视图原始尺寸（不乘以Retina比例）进行计算
+        const float viewWidth = view.view.frame.size.width;
+        const float viewHeight = view.view.frame.size.height;
+        
+        // 计算归一化坐标系下的缩放比例
+        // Live2D使用-1到1的归一化坐标系，所以缩放因子为2/模型尺寸
+        float scaleX = 2.0f * viewWidth / modelWidth;
+        float scaleY = 2.0f * viewHeight / modelHeight;
+        
+        // 使用较小的缩放因子确保完整显示（可选：使用std::max填充）
+        float uniformScale = std::min(scaleX, scaleY);
         
         // 应用统一缩放保持比例
         model->GetModelMatrix()->Scale(uniformScale, uniformScale);
         
-        // 计算居中偏移量
-        float scaledWidth = modelWidth * uniformScale;
-        float scaledHeight = modelHeight * uniformScale;
-        float offsetX = (width - scaledWidth) * 0.5f;
-        float offsetY = (height - scaledHeight) * 0.5f;
-        
-        // 应用居中偏移
-        model->GetModelMatrix()->Translate(offsetX / uniformScale, offsetY / uniformScale);
+        // 计算居中位置（归一化坐标系下中心为0,0）
+        // 不需要额外偏移，因为Live2D已经处理居中
 
         // 必要があればここで乗算
         if (_viewMatrix != NULL)
