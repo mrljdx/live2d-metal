@@ -280,22 +280,27 @@ Csm::csmString GetPath(CFURLRef url)
         float modelWidth = model->GetModel()->GetCanvasWidth();
         float modelHeight = model->GetModel()->GetCanvasHeight();
         
-        // 计算最优缩放因子，确保模型完整显示且保持原始比例
-        float scaleX = static_cast<float>(width) / modelWidth;
-        float scaleY = static_cast<float>(height) / modelHeight;
+        // 计算适合的缩放因子，确保模型完整显示且保持比例
+        float scaleX = (float)width / modelWidth;
+        float scaleY = (float)height / modelHeight;
         
         // 选择较小的缩放因子，确保模型完全显示在容器内
-        float uniformScale = (scaleX < scaleY) ? scaleX : scaleY;
+        float scale = (scaleX < scaleY) ? scaleX : scaleY;
         
-        // 计算Metal渲染需要的标准化缩放（将模型坐标系映射到[-1,1]）
-        float normalizedScaleX = 2.0f / modelWidth;
-        float normalizedScaleY = 2.0f / modelHeight;
-        
-        // 应用缩放，确保模型完全显示且保持比例
-        float finalScale = uniformScale;
-        projection.Scale(normalizedScaleX * finalScale, normalizedScaleY * finalScale);
-        
-        // 重置并设置模型矩阵（确保居中）
+        // 使用标准投影方法，确保模型居中显示
+        float aspectRatio = (float)width / (float)height;
+        float modelAspectRatio = modelWidth / modelHeight;
+
+        // 应用最终缩放，确保模型完整显示
+        if (aspectRatio > modelAspectRatio) {
+            // 容器比模型宽，以高度为基准
+            projection.Scale(1.0f, modelAspectRatio / aspectRatio);
+        } else {
+            // 容器比模型高，以宽度为基准
+            projection.Scale(aspectRatio / modelAspectRatio, 1.0f);
+        }
+
+        // 重置模型矩阵
         model->GetModelMatrix()->LoadIdentity();
 
         // 必要があればここで乗算

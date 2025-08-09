@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'live2d-metal'
-  s.version          = '0.1.28'
+  s.version          = '0.1.29'
   s.summary          = 'Live2D Cubism Framework Metal SDK'
   s.description      = 'Live2D Cubism Framework Metal SDK'
   s.homepage         = 'https://github.com/mrljdx/live2d-metal'
