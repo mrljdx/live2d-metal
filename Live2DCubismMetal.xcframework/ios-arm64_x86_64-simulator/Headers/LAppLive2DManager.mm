@@ -280,20 +280,24 @@ Csm::csmString GetPath(CFURLRef url)
         float modelWidth = model->GetModel()->GetCanvasWidth();
         float modelHeight = model->GetModel()->GetCanvasHeight();
 
-        model->GetModelMatrix()->SetWidth(2.0f);
-        // 直接根据宽高比进行缩放，无需>1.0f判断
-        if (modelWidth > modelHeight) {
-            // 横长模型
-            float scale = height / modelHeight;
-            model->GetModelMatrix()->Scale(scale, scale);
-        } else {
-            // 竖长或方形模型
-            float scale = width / modelWidth;
-            model->GetModelMatrix()->Scale(scale, scale);
-        }
-
-        // 重置模型矩阵
-        model->GetModelMatrix()->LoadIdentity();
+        // 计算保持比例的缩放因子，确保模型填充容器
+        float scaleX = width / modelWidth;
+        float scaleY = height / modelHeight;
+        
+        // 使用较大的缩放因子确保填充整个容器（可能会裁剪部分模型）
+        float uniformScale = std::max(scaleX, scaleY);
+        
+        // 应用统一缩放保持比例
+        model->GetModelMatrix()->Scale(uniformScale, uniformScale);
+        
+        // 计算居中偏移量
+        float scaledWidth = modelWidth * uniformScale;
+        float scaledHeight = modelHeight * uniformScale;
+        float offsetX = (width - scaledWidth) * 0.5f;
+        float offsetY = (height - scaledHeight) * 0.5f;
+        
+        // 应用居中偏移
+        model->GetModelMatrix()->Translate(offsetX / uniformScale, offsetY / uniformScale);
 
         // 必要があればここで乗算
         if (_viewMatrix != NULL)
