@@ -164,41 +164,38 @@ using namespace LAppDefine;
 {
     AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
     ViewController* view = [delegate viewController];
+    int width = view.view.frame.size.width;
+    int height = view.view.frame.size.height;
 
-    // 使用视图的实际bounds尺寸，避免frame的坐标系问题
-    CGRect bounds = view.view.bounds;
-    CGFloat width = bounds.size.width;
-    CGFloat height = bounds.size.height;
+    // 縦サイズを基準とする
+    float ratio = static_cast<float>(width) / static_cast<float>(height);
+    float left = -ratio;
+    float right = ratio;
+    float bottom = ViewLogicalLeft;
+    float top = ViewLogicalRight;
 
-    // 保持宽高比的计算 - 使用更稳定的逻辑坐标系
-    float logicalHeight = 2.0f;
-    float logicalWidth = 2.0f * (width / height);
-
-    // 确保宽高比合理，避免极端情况
-    float maxAspectRatio = 3.0f; // iPad横屏约为1.33-1.77，手机横屏约为1.77-2.16
-    if (width / height > maxAspectRatio) {
-        logicalWidth = logicalHeight * maxAspectRatio;
-    }
-
-    float left = -logicalWidth / 2.0f;
-    float right = logicalWidth / 2.0f;
-    float bottom = -logicalHeight / 2.0f;
-    float top = logicalHeight / 2.0f;
-
-    // 设置视图矩阵，保持宽高比
+    // デバイスに対応する画面の範囲。 Xの左端, Xの右端, Yの下端, Yの上端
     _viewMatrix->SetScreenRect(left, right, bottom, top);
     _viewMatrix->Scale(ViewScale, ViewScale);
 
-    // 重新计算设备到屏幕的转换矩阵 - 统一的转换方式
-    _deviceToScreen->LoadIdentity();
-    _deviceToScreen->ScaleRelative(2.0f / width, -2.0f / height);
+    _deviceToScreen->LoadIdentity(); // サイズが変わった際などリセット必須
+    if (width > height)
+    {
+        float screenW = fabsf(right - left);
+        _deviceToScreen->ScaleRelative(screenW / width, -screenW / width);
+    }
+    else
+    {
+        float screenH = fabsf(top - bottom);
+        _deviceToScreen->ScaleRelative(screenH / height, -screenH / height);
+    }
     _deviceToScreen->TranslateRelative(-width * 0.5f, -height * 0.5f);
 
-    // 保持缩放限制
-    _viewMatrix->SetMaxScale(ViewMaxScale);
-    _viewMatrix->SetMinScale(ViewMinScale);
+    // 表示範囲の設定
+    _viewMatrix->SetMaxScale(ViewMaxScale); // 限界拡大率
+    _viewMatrix->SetMinScale(ViewMinScale); // 限界縮小率
 
-    // 设置最大显示范围
+    // 表示できる最大範囲
     _viewMatrix->SetMaxScreenRect(
                                   ViewLogicalMaxLeft,
                                   ViewLogicalMaxRight,
@@ -206,28 +203,10 @@ using namespace LAppDefine;
                                   ViewLogicalMaxTop
                                   );
 
-    // 更新Metal layer的drawable尺寸
-    MetalUIView *metalView = (MetalUIView*)self.view;
-    if (metalView.metalLayer) {
-        CGSize drawableSize = CGSizeMake(width, height);
-        metalView.metalLayer.drawableSize = drawableSize;
-    }
-
 #if TARGET_OS_MACCATALYST
     [self resizeSprite:width Height:height];
 #endif
-}
 
-- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
-    [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
-
-    [coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext> context) {
-        // 在旋转动画中更新布局
-        [self resizeScreen];
-    } completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
-        // 旋转完成后的额外处理
-        [self resizeScreen];
-    }];
 }
 
 - (void)initializeSprite
@@ -436,6 +415,30 @@ using namespace LAppDefine;
 
     [commandBuffer presentDrawable:currentDrawable];
     [commandBuffer commit];
+}
+
+- (void)switchToNextModel {
+    [[LAppLive2DManager getInstance] nextScene];
+}
+
+- (void)switchToPreviousModel {
+    LAppLive2DManager* manager = [LAppLive2DManager getInstance];
+    Csm::csmInt32 currentIndex = manager.sceneIndex;
+    Csm::csmInt32 modelCount = manager.modelDir.GetSize();
+    
+    if (modelCount > 0) {
+        Csm::csmInt32 previousIndex = (currentIndex - 1 + modelCount) % modelCount;
+        [manager changeScene:previousIndex];
+    }
+}
+
+- (void)switchToModel:(int)index {
+    LAppLive2DManager* manager = [LAppLive2DManager getInstance];
+    Csm::csmInt32 modelCount = manager.modelDir.GetSize();
+    
+    if (index >= 0 && index < modelCount) {
+        [manager changeScene:index];
+    }
 }
 
 - (void)dealloc

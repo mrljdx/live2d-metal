@@ -6,5 +6,8 @@
 - (void)initializeSprite;
 - (void)releaseView;
 - (void)resizeScreen;
+- (void)switchToNextModel;
+- (void)switchToPreviousModel;
+- (void)switchToModel:(int)index;
 
 @end

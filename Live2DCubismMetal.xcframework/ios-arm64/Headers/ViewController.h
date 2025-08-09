@@ -71,4 +71,21 @@
  */
 - (float)transformScreenY:(float)deviceY;
 
+/**
+ * @brief Switch to the next model
+ */
+- (void)switchToNextModel;
+
+/**
+ * @brief Switch to the previous model
+ */
+- (void)switchToPreviousModel;
+
+/**
+ * @brief Switch to a specific model by index
+ *
+ * @param[in] index The model index to switch to
+ */
+- (void)switchToModel:(int)index;
+
 @end

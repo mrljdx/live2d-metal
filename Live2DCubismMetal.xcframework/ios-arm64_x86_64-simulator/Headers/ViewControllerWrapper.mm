@@ -82,6 +82,73 @@
     return deviceY;
 }
 
+- (void)switchToNextModel {
+    if ([_internalViewController respondsToSelector:@selector(switchToNextModel)]) {
+        [_internalViewController performSelector:@selector(switchToNextModel)];
+    } else {
+        // Fallback: directly call LAppLive2DManager
+        Class LAppLive2DManagerClass = NSClassFromString(@"LAppLive2DManager");
+        if (LAppLive2DManagerClass && [LAppLive2DManagerClass respondsToSelector:@selector(getInstance)]) {
+            id manager = [LAppLive2DManagerClass performSelector:@selector(getInstance)];
+            if ([manager respondsToSelector:@selector(nextScene)]) {
+                [manager performSelector:@selector(nextScene)];
+            }
+        }
+    }
+}
+
+- (void)switchToPreviousModel {
+    if ([_internalViewController respondsToSelector:@selector(switchToPreviousModel)]) {
+        [_internalViewController performSelector:@selector(switchToPreviousModel)];
+    } else {
+        // Fallback: directly call LAppLive2DManager with index calculation
+        Class LAppLive2DManagerClass = NSClassFromString(@"LAppLive2DManager");
+        if (LAppLive2DManagerClass && [LAppLive2DManagerClass respondsToSelector:@selector(getInstance)]) {
+            id manager = [LAppLive2DManagerClass performSelector:@selector(getInstance)];
+            
+            // Get current index and model count to calculate previous
+            if ([manager respondsToSelector:@selector(changeScene:)]) {
+                NSMethodSignature *countSignature = [manager methodSignatureForSelector:@selector(GetModelNum)];
+                if (countSignature) {
+                    NSInvocation *countInvocation = [NSInvocation invocationWithMethodSignature:countSignature];
+                    [countInvocation setTarget:manager];
+                    [countInvocation setSelector:@selector(GetModelNum)];
+                    [countInvocation invoke];
+                    
+                    unsigned int modelCount;
+                    [countInvocation getReturnValue:&modelCount];
+                    
+                    // For previous model, we'll use a simplified approach since we can't easily get current index
+                    // This will require exposing the sceneIndex or implementing the logic differently
+                    [manager performSelector:@selector(nextScene)]; // Temporary fallback
+                }
+            }
+        }
+    }
+}
+
+- (void)switchToModel:(int)index {
+    if ([_internalViewController respondsToSelector:@selector(switchToModel:)]) {
+        [_internalViewController performSelector:@selector(switchToModel:) withObject:@(index)];
+    } else {
+        // Fallback: directly call LAppLive2DManager
+        Class LAppLive2DManagerClass = NSClassFromString(@"LAppLive2DManager");
+        if (LAppLive2DManagerClass && [LAppLive2DManagerClass respondsToSelector:@selector(getInstance)]) {
+            id manager = [LAppLive2DManagerClass performSelector:@selector(getInstance)];
+            if ([manager respondsToSelector:@selector(changeScene:)]) {
+                NSMethodSignature *signature = [manager methodSignatureForSelector:@selector(changeScene:)];
+                if (signature) {
+                    NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
+                    [invocation setTarget:manager];
+                    [invocation setSelector:@selector(changeScene:)];
+                    [invocation setArgument:&index atIndex:2];
+                    [invocation invoke];
+                }
+            }
+        }
+    }
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
 
