@@ -38,7 +38,7 @@ using namespace LAppDefine;
 @property (nonatomic) TouchManager *touchManager; ///< タッチマネージャー
 @property (nonatomic) Csm::CubismMatrix44 *deviceToScreen;///< デバイスからスクリーンへの行列
 @property (nonatomic) Csm::CubismViewMatrix *viewMatrix;
-
+@property (nonatomic, assign) CGRect lastBounds;
 @end
 
 @implementation ViewController
@@ -101,6 +101,8 @@ using namespace LAppDefine;
     view.backgroundColor = [UIColor clearColor];  // 设置透明背景色
     [single setMetalLayer:view.metalLayer];
 
+    NSLog(@"[Live2D] ViewController: viewDidLoad - setMetalLayer called!");
+
     _commandQueue = [device newCommandQueue];
 
     _anotherTarget = false;
@@ -119,11 +121,21 @@ using namespace LAppDefine;
     [self initializeScreen];
 }
 
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    [self resizeScreen];
+}
+
 - (void)initializeScreen
 {
-    CGRect screenRect = [[UIScreen mainScreen] bounds];
-    int width = screenRect.size.width;
-    int height = screenRect.size.height;
+//    CGRect screenRect = [[UIScreen mainScreen] bounds];
+//    int width = screenRect.size.width;
+//    int height = screenRect.size.height;
+    CGRect bounds = self.view.bounds;   // ← 容器尺寸
+    int width  = (int)bounds.size.width;
+    int height = (int)bounds.size.height;
+
+    NSLog(@"[Live2D] ViewController: initializeScreen - width:%d  height:%d", width, height);
 
     // 縦サイズを基準とする
     float ratio = static_cast<float>(width) / static_cast<float>(height);
@@ -164,11 +176,26 @@ using namespace LAppDefine;
 
 - (void)resizeScreen
 {
-    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
-    ViewController* view = [delegate viewController];
-    int width = view.view.frame.size.width;
-    int height = view.view.frame.size.height;
+//    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
+//    ViewController* view = [delegate viewController];
+//    int width = view.view.frame.size.width;
+//    int height = view.view.frame.size.height;
+    NSLog(@"[Live2D] ViewController: Current bounds: %@", NSStringFromCGRect(self.view.bounds));
+    NSLog(@"[Live2D] ViewController: Last bounds: %@", NSStringFromCGRect(self.lastBounds));
 
+    if (CGRectEqualToRect(self.view.bounds, self.lastBounds)) {
+        NSLog(@"[Live2D] ViewController: Bounds are equal, skipping resize");
+        return;
+    }
+    NSLog(@"[Live2D] ViewController: Bounds changed, updating");
+
+    self.lastBounds = self.view.bounds;
+
+    // 直接用 self.view，而不是再兜圈子拿 AppDelegate.viewController
+    int width  = (int)self.lastBounds.size.width;
+    int height = (int)self.lastBounds.size.height;
+
+    NSLog(@"[Live2D] ViewController: resizeScreen - width:%d  height:%d", width, height);
     // 縦サイズを基準とする
     float ratio = static_cast<float>(width) / static_cast<float>(height);
     float left = -ratio;
@@ -213,13 +240,17 @@ using namespace LAppDefine;
 
 - (void)initializeSprite
 {
-    AppDelegate *delegate = (AppDelegate *)[[UIApplication sharedApplication] delegate];
-    ViewController* view = [delegate viewController];
-    float width = view.view.frame.size.width;
-    float height = view.view.frame.size.height;
+//    AppDelegate *delegate = (AppDelegate *)[[UIApplication sharedApplication] delegate];
+//    ViewController* view = [delegate viewController];
+//    float width = view.view.frame.size.width;
+//    float height = view.view.frame.size.height;
+    float width  = self.view.bounds.size.width;
+    float height = self.view.bounds.size.height;
 
-    LAppTextureManager* textureManager = [delegate getTextureManager];
-    const string resourcesPath = ResourcesPath;
+    NSLog(@"[Live2D] ViewController: initializeSprite - width:%f  height:%f", width, height);
+
+//    LAppTextureManager* textureManager = [delegate getTextureManager];
+//    const string resourcesPath = ResourcesPath;
 
     //背景
 //    string imageName = BackImageName;
@@ -251,11 +282,14 @@ using namespace LAppDefine;
 
 - (void)resizeSprite:(float)width Height:(float)height
 {
-    AppDelegate *delegate = (AppDelegate *)[[UIApplication sharedApplication] delegate];
-    ViewController* view = [delegate viewController];
-    float maxWidth = view.view.frame.size.width;
-    float maxHeight = view.view.frame.size.height;
+//    AppDelegate *delegate = (AppDelegate *)[[UIApplication sharedApplication] delegate];
+//    ViewController* view = [delegate viewController];
+//    float maxWidth = view.view.frame.size.width;
+//    float maxHeight = view.view.frame.size.height;
+    float maxWidth  = self.view.bounds.size.width;
+    float maxHeight = self.view.bounds.size.height;
 
+    NSLog(@"[Live2D] ViewController: resizeSprite - width:%f  height:%f", maxWidth, maxHeight);
     //背景
 //    float x = width * 0.5f;
 //    float y = height * 0.5f;
@@ -447,4 +481,11 @@ using namespace LAppDefine;
 {
     [super dealloc];
 }
+
+- (void)setModelScale:(float)scale
+{
+    LAppLive2DManager* manager = [LAppLive2DManager getInstance];
+    [manager setModelScale:scale];
+}
+
 @end

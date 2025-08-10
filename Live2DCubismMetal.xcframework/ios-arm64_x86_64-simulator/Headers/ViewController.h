@@ -88,4 +88,10 @@
  */
 - (void)switchToModel:(int)index;
 
+/**
+ * @brief 设置指定模型的缩放
+ * @param scale 目标缩放值（1.0 为原始大小）
+ */
+- (void)setModelScale:(float)scale;
+
 @end

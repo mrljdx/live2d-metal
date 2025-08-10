@@ -125,6 +125,12 @@ typedef NS_ENUM(NSUInteger, SelectTarget)
  */
 - (void)SetRenderTargetClearColor:(float)r g:(float)g b:(float)b;
 
+/**
+ * @brief 设置指定模型的缩放
+ * @param scale 目标缩放值（1.0 为原始大小）
+ */
+- (void)setModelScale:(float)scale;
+
 @end
 
 #endif /* LAppLive2DManager_h */

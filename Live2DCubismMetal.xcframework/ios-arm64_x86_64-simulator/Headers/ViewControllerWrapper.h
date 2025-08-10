@@ -9,5 +9,6 @@
 - (void)switchToNextModel;
 - (void)switchToPreviousModel;
 - (void)switchToModel:(int)index;
+- (void)setModelScale:(float)scale;
 
 @end

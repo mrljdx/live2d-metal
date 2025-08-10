@@ -1,7 +1,9 @@
 #import "ViewControllerWrapper.h"
+#import <UIKit/UIKit.h>
 
 @interface ViewControllerWrapper ()
 @property (nonatomic, strong) id internalViewController;
+@property (nonatomic, assign) CGRect lastBounds;
 @end
 
 @implementation ViewControllerWrapper
@@ -14,7 +16,7 @@
         if (ViewControllerClass) {
             _internalViewController = [[ViewControllerClass alloc] init];
         } else {
-            NSLog(@"Warning: ViewController class not found");
+            NSLog(@"[Live2D] Warning: ViewController class not found");
         }
     }
     return self;
@@ -22,70 +24,49 @@
 
 - (void)initializeSprite {
     if ([_internalViewController respondsToSelector:@selector(initializeSprite)]) {
-        [_internalViewController performSelector:@selector(initializeSprite)];
+        [_internalViewController initializeSprite];
     } else {
-        NSLog(@"Warning: initializeSprite method not available");
+        NSLog(@"[Live2D] Warning: initializeSprite method not available");
     }
 }
 
 - (void)releaseView {
     if ([_internalViewController respondsToSelector:@selector(releaseView)]) {
-        [_internalViewController performSelector:@selector(releaseView)];
+        [_internalViewController releaseView];
     } else {
-        NSLog(@"Warning: releaseView method not available");
+        NSLog(@"[Live2D] Warning: releaseView method not available");
     }
 }
 
 - (void)resizeScreen {
     if ([_internalViewController respondsToSelector:@selector(resizeScreen)]) {
-        [_internalViewController performSelector:@selector(resizeScreen)];
+        [_internalViewController resizeScreen];
     } else {
-        NSLog(@"Warning: resizeScreen method not available");
+        NSLog(@"[Live2D] Warning: resizeScreen method not available");
     }
 }
 
 - (float)transformViewX:(float)deviceX {
     if ([_internalViewController respondsToSelector:@selector(transformViewX:)]) {
-        NSMethodSignature *signature = [_internalViewController methodSignatureForSelector:@selector(transformViewX:)];
-        if (signature) {
-            NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
-            [invocation setTarget:_internalViewController];
-            [invocation setSelector:@selector(transformViewX:)];
-            [invocation setArgument:&deviceX atIndex:2];
-            [invocation invoke];
-
-            float result;
-            [invocation getReturnValue:&result];
-            return result;
-        }
+        return [_internalViewController transformViewX:deviceX];
     }
-    NSLog(@"Warning: transformViewX method not available, returning original value");
+    NSLog(@"[Live2D] Warning: transformViewX method not available, returning original value");
     return deviceX;
 }
 
 - (float)transformViewY:(float)deviceY {
     if ([_internalViewController respondsToSelector:@selector(transformViewY:)]) {
-        NSMethodSignature *signature = [_internalViewController methodSignatureForSelector:@selector(transformViewY:)];
-        if (signature) {
-            NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
-            [invocation setTarget:_internalViewController];
-            [invocation setSelector:@selector(transformViewY:)];
-            [invocation setArgument:&deviceY atIndex:2];
-            [invocation invoke];
-
-            float result;
-            [invocation getReturnValue:&result];
-            return result;
-        }
+        return [_internalViewController transformViewY:deviceY];
     }
-    NSLog(@"Warning: transformViewY method not available, returning original value");
+    NSLog(@"[Live2D] Warning: transformViewY method not available, returning original value");
     return deviceY;
 }
 
 - (void)switchToNextModel {
     if ([_internalViewController respondsToSelector:@selector(switchToNextModel)]) {
-        [_internalViewController performSelector:@selector(switchToNextModel)];
+        [_internalViewController switchToNextModel];
     } else {
+        NSLog(@"[Live2D] Warning: switchToNextModel method not available, fallback to call LAppLive2DManager");
         // Fallback: directly call LAppLive2DManager
         Class LAppLive2DManagerClass = NSClassFromString(@"LAppLive2DManager");
         if (LAppLive2DManagerClass && [LAppLive2DManagerClass respondsToSelector:@selector(getInstance)]) {
@@ -99,8 +80,9 @@
 
 - (void)switchToPreviousModel {
     if ([_internalViewController respondsToSelector:@selector(switchToPreviousModel)]) {
-        [_internalViewController performSelector:@selector(switchToPreviousModel)];
+        [_internalViewController switchToPreviousModel];
     } else {
+        NSLog(@"[Live2D] Warning: switchToPreviousModel method not available, fallback to call LAppLive2DManager");
         // Fallback: directly call LAppLive2DManager with index calculation
         Class LAppLive2DManagerClass = NSClassFromString(@"LAppLive2DManager");
         if (LAppLive2DManagerClass && [LAppLive2DManagerClass respondsToSelector:@selector(getInstance)]) {
@@ -129,8 +111,9 @@
 
 - (void)switchToModel:(int)index {
     if ([_internalViewController respondsToSelector:@selector(switchToModel:)]) {
-        [_internalViewController performSelector:@selector(switchToModel:) withObject:@(index)];
+        [_internalViewController switchToModel:index];
     } else {
+        NSLog(@"[Live2D] Warning: switchToModel method not available, fallback to call LAppLive2DManager");
         // Fallback: directly call LAppLive2DManager
         Class LAppLive2DManagerClass = NSClassFromString(@"LAppLive2DManager");
         if (LAppLive2DManagerClass && [LAppLive2DManagerClass respondsToSelector:@selector(getInstance)]) {
@@ -151,11 +134,6 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-
-    // 设置视图控制器背景透明
-    self.view.backgroundColor = [UIColor clearColor];
-    self.view.opaque = NO;
-
     if (_internalViewController && [_internalViewController isKindOfClass:[UIViewController class]]) {
         UIViewController *vc = (UIViewController *)_internalViewController;
         [self addChildViewController:vc];
@@ -165,17 +143,89 @@
         // 让内部 ViewController 完全控制自己的视图
         vc.view.frame = self.view.bounds;
         vc.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        
+
         // 设置内容模式为Aspect Fit以保持宽高比
         vc.view.contentMode = UIViewContentModeScaleAspectFit;
-        
+
         // 确保内部视图也透明
         vc.view.backgroundColor = [UIColor clearColor];
         vc.view.opaque = NO;
     }
+    
+    // 添加屏幕旋转通知监听
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(orientationChanged:)
+                                                 name:UIDeviceOrientationDidChangeNotification
+                                               object:nil];
+    
+    // 确保设备方向通知已启用
+    [[UIDevice currentDevice] beginGeneratingDeviceOrientationNotifications];
+}
+
+// 加到 ViewControllerWrapper.m 里
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+
+    // 如果 bounds 没变化就不重复调用
+    if (CGRectEqualToRect(self.view.bounds, self.lastBounds)) { return; }
+    self.lastBounds = self.view.bounds;
+
+    if (_internalViewController && [_internalViewController isKindOfClass:[UIViewController class]]) {
+        UIViewController *vc = (UIViewController *)_internalViewController;
+
+        // 1. 让内部 view 跟随父视图大小
+        vc.view.frame = self.view.bounds;
+
+        // 2. 通知内部重新计算 Live2D 画布
+        [self resizeScreen];
+
+        NSLog(@"[Live2D] ViewControllerWrapper: layout updated, new bounds %@", NSStringFromCGRect(self.view.bounds));
+    }
+}
+
+- (void)orientationChanged:(NSNotification *)notification {
+    // 延迟执行以确保布局已经完成更新
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self handleRotation];
+    });
+}
+
+- (void)handleRotation {
+    if (CGRectEqualToRect(self.view.bounds, self.lastBounds)) {
+        NSLog(@"[Live2D] ViewControllerWrapper: rotation skipped (duplicate)");
+        return;
+    }
+    // 强制重新计算屏幕尺寸
+    if (_internalViewController && [_internalViewController isKindOfClass:[UIViewController class]]) {
+        UIViewController *vc = (UIViewController *)_internalViewController;
+
+        // 更新视图框架
+        vc.view.frame = self.view.bounds;
+
+        // 调用内部控制器的resize方法来重新计算模型尺寸
+        [self resizeScreen];
+
+        NSLog(@"[Live2D] ViewControllerWrapper: Screen rotated, new bounds: %@", NSStringFromCGRect(self.view.bounds));
+    }
+}
+
+- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
+    [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+
+    // 在旋转动画完成后重新计算
+    [coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+        // 动画过程中的更新
+    } completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+        // 旋转完成后重新计算
+        [self handleRotation];
+    }];
 }
 
 - (void)dealloc {
+    // 移除通知监听
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    [[UIDevice currentDevice] endGeneratingDeviceOrientationNotifications];
+    
     // 清理资源
     [self releaseView];
 
@@ -187,6 +237,15 @@
     }
 
     _internalViewController = nil;
+}
+
+- (void)setModelScale:(float)scale
+{
+    if ([_internalViewController respondsToSelector:@selector(setModelScale:)]) {
+        [_internalViewController setModelScale:scale];
+    } else {
+        NSLog(@"[Live2D] Warning: setModelScale method not available");
+    }
 }
 
 @end

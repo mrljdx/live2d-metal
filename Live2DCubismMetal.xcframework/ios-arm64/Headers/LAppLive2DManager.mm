@@ -18,7 +18,7 @@
 #import "Rendering/Metal/CubismRenderingInstanceSingleton_Metal.h"
 
 @interface LAppLive2DManager()
-
+@property (nonatomic, assign) float modelScale;   // 模型缩放
 - (id)init;
 - (void)dealloc;
 @end
@@ -84,7 +84,7 @@ Csm::csmString GetPath(CFURLRef url)
         _sprite = nil;
         _viewMatrix = nil;
         _sceneIndex = 0;
-
+        _modelScale = 1.0f;   // 默认不放大
         _viewMatrix = new Csm::CubismMatrix44();
 
         _renderPassDescriptor = [[MTLRenderPassDescriptor alloc] init];
@@ -276,16 +276,65 @@ Csm::csmString GetPath(CFURLRef url)
             continue;
         }
 
-        if (model->GetModel()->GetCanvasWidth() > 1.0f && width < height)
-        {
-            // 横に長いモデルを縦長ウィンドウに表示する際モデルの横サイズでscaleを算出する
+        // 1. 画布原始尺寸
+        const float canvasWidth  = model->GetModel()->GetCanvasWidth();
+        const float canvasHeight = model->GetModel()->GetCanvasHeight();
+
+        // 2. 让模型整体落在 -1~1 范围内，保持比例
+        const float baseScale = 2.0f / canvasHeight;
+
+        // 2. drawable 实际像素宽高
+        const float drawableW = (float)drawable.texture.width;
+        const float drawableH = (float)drawable.texture.height;
+
+        // 3. 投影矩阵补偿屏幕宽高比（防止圆形变椭圆）
+//        const float aspect = static_cast<float>(width) / static_cast<float>(height);
+        const float aspect = drawableW / drawableH;
+        // 投影矩阵补偿： *2 抵消官方内部 *0.5，再乘 aspect
+//        projection.Scale(aspect, 1.0f);
+        if (drawableW < drawableH) {
             model->GetModelMatrix()->SetWidth(2.0f);
-            projection.Scale(1.0f, static_cast<float>(width) / static_cast<float>(height));
+            projection.Scale(1.0f, drawableW / drawableH);
+        } else {
+            projection.Scale(drawableH/drawableW, 1.0f);
         }
-        else
-        {
-            projection.Scale(static_cast<float>(height) / static_cast<float>(width), 1.0f);
-        }
+
+        // TODO 提供一个全局的变量可以通过方法修改这个值从而实现自定义缩放大小
+        // 4. 模型矩阵只做这一次等比缩放
+        model->GetModelMatrix()->LoadIdentity();
+        // 注意Scale方法的调用一定要在LoadIdentify之后，否则会失效
+        // const float customScale = 1.1f;
+        model->GetModelMatrix()->Scale(baseScale * _modelScale, baseScale * _modelScale);
+
+//        if (model->GetModel()->GetCanvasWidth() > 1.0f && width < height)
+//        {
+//            // 横に長いモデルを縦長ウィンドウに表示する際モデルの横サイズでscaleを算出する
+//            model->GetModelMatrix()->SetWidth(2.0f);
+//            projection.Scale(1.0f, static_cast<float>(width) / static_cast<float>(height));
+//        }
+//        else
+//        {
+//            projection.Scale(static_cast<float>(height) / static_cast<float>(width), 1.0f);
+//        }
+
+        // 获取模型原始尺寸（Canvas尺寸）
+//        float modelWidth = model->GetModel()->GetCanvasWidth();
+//        float modelHeight = model->GetModel()->GetCanvasHeight();
+//
+//        model->GetModelMatrix()->SetWidth(2.0f);
+//        // 直接根据宽高比进行缩放，无需>1.0f判断
+//        if (modelWidth > modelHeight) {
+//            // 横长模型
+//            float scale = height / modelHeight;
+//            model->GetModelMatrix()->Scale(scale, scale);
+//        } else {
+//            // 竖长或方形模型
+//            float scale = width / modelWidth;
+//            model->GetModelMatrix()->Scale(scale, scale);
+//        }
+
+        // 重置模型矩阵
+//        model->GetModelMatrix()->LoadIdentity();
 
         // 必要があればここで乗算
         if (_viewMatrix != NULL)
@@ -441,4 +490,10 @@ Csm::csmString GetPath(CFURLRef url)
     _clearColorG = g;
     _clearColorB = b;
 }
+
+- (void)setModelScale:(float)scale
+{
+    _modelScale = scale;
+}
+
 @end

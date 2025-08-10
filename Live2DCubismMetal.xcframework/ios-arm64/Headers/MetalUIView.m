@@ -33,17 +33,6 @@
 - (void)didMoveToWindow
 {
     [super didMoveToWindow];
-    
-    // 设置透明背景
-    self.backgroundColor = [UIColor clearColor];
-    self.opaque = NO;
-    
-    // 设置Metal层透明
-    CAMetalLayer *metalLayer = (CAMetalLayer *)self.layer;
-    if (metalLayer) {
-        metalLayer.opaque = NO;
-        metalLayer.backgroundColor = [UIColor clearColor].CGColor;
-    }
 
 #if ANIMATION_RENDERING
     if (self.window == nil)
