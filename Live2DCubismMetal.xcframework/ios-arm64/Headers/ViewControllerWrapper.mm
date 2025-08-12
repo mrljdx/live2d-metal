@@ -248,4 +248,68 @@
     }
 }
 
+- (void)moveModel:(float)x y:(float)y
+{
+    if ([_internalViewController respondsToSelector:@selector(moveModel:y:)]) {
+        [_internalViewController moveModel:x y:y];
+    } else {
+        NSLog(@"[Live2D] Warning: moveModel method not available");
+    }
+}
+
+- (BOOL)loadWavFile:(NSString *)filePath {
+    if ([_internalViewController respondsToSelector:@selector(loadWavFile:)]) {
+        [_internalViewController loadWavFile:filePath];
+        return YES;
+    } else {
+        NSLog(@"[Live2D] Warning: loadWavFile method not available");
+        return NO;
+    }
+}
+
+- (float)getAudioRms {
+    if ([_internalViewController respondsToSelector:@selector(getAudioRms)]) {
+        return [_internalViewController getAudioRms];
+    } else {
+        NSLog(@"[Live2D] Warning: getAudioRms method not available");
+        return 0.0f;
+    }
+}
+
+- (BOOL)updateAudio:(float)deltaTime {
+    if ([_internalViewController respondsToSelector:@selector(updateAudio:)]) {
+        [_internalViewController updateAudio:deltaTime];
+        return YES;
+    } else {
+        NSLog(@"[Live2D] Warning: updateAudio method not available");
+        return NO;
+    }
+}
+
+- (void)releaseWavHandler {
+    if ([_internalViewController respondsToSelector:@selector(releaseWavHandler)]) {
+        [_internalViewController releaseWavHandler];
+    } else {
+        NSLog(@"[Live2D] Warning: releaseWavHandler method not available");
+    }
+}
+
+- (void)updateLipSync:(float)mouth
+{
+    if ([_internalViewController respondsToSelector:@selector(updateLipSync:)]) {
+        [_internalViewController updateLipSync:mouth];
+    } else {
+        NSLog(@"[Live2D] Warning: updateLipSync method not available");
+    }
+}
+
+- (void)updateLipSync
+{
+    // 获取音频的RMS值用于唇形同步
+    float rms = [self getAudioRms];
+
+    // 调用实际的唇形同步更新方法
+    [self updateLipSync:rms];
+}
+
 @end

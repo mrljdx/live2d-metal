@@ -2,6 +2,10 @@ target_sources(${APP_NAME}
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/L2DCubism.h
     ${CMAKE_CURRENT_SOURCE_DIR}/L2DCubism.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/Live2DCallbackBridge.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/Live2DCallbackBridge.mm
+    ${CMAKE_CURRENT_SOURCE_DIR}/LAppWavFileHandler_Common.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/LAppWavFileHandler_Common.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/AppDelegate.h
     ${CMAKE_CURRENT_SOURCE_DIR}/AppDelegate.mm
     ${CMAKE_CURRENT_SOURCE_DIR}/LAppAllocator.h

@@ -116,12 +116,28 @@ public:
     Csm::Rendering::CubismOffscreenSurface_Metal& GetRenderBuffer();
 
     /**
+     * @brief   モデルセッティングを取得する
+     */
+    Csm::ICubismModelSetting* GetModelSetting() const { return _modelSetting; }
+
+    /**
+     * @brief   モデルのホームディレクトリを取得する
+     */
+    const Csm::csmString& GetModelHomeDir() const { return _modelHomeDir; }
+
+    /**
      * @brief   .moc3ファイルの整合性をチェックする
      *
      * @param[in]   mocName MOC3ファイル名
      * @return      MOC3に整合性があれば'true'、そうでなければ'false'。
      */
     Csm::csmBool HasMocConsistencyFromFile(const Csm::csmChar* mocFileName);
+
+    /**
+     * @brief リップシンクの値を設定する
+     * @param mouth 口の開き具合(0.0〜1.0)
+     */
+    void SetLipSyncValue(Csm::csmFloat32 mouth);
 
 protected:
     /**
@@ -193,6 +209,9 @@ private:
     const Csm::CubismId* _idParamEyeBallY; ///< パラメータID: ParamEyeBallXY
 
     Live2D::Cubism::Framework::Rendering::CubismOffscreenSurface_Metal _renderBuffer;
+
+    Csm::csmFloat32 _lipSyncValue;      ///< リップシンクの値(0.0〜1.0)
+    Csm::csmFloat32 _lipSyncSensitivity; ///< リップシンクの感度調整係数
 };
 
 #endif /* LAppModel_h */

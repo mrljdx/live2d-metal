@@ -13,6 +13,7 @@
 #import "LAppPal.h"
 #import "LAppTextureManager.h"
 #import "AppDelegate.h"
+#import "Live2DCallbackBridge.h"
 #import <CubismDefaultParameterId.hpp>
 #import <CubismModelSettingJson.hpp>
 #import <Id/CubismIdManager.hpp>
@@ -50,6 +51,8 @@ LAppModel::LAppModel()
 : CubismUserModel()
 , _modelSetting(NULL)
 , _userTimeSeconds(0.0f)
+, _lipSyncValue(0.0f)
+, _lipSyncSensitivity(1.5f) // 默认灵敏度1.5倍
 {
     if (MocConsistencyValidationEnable)
     {
@@ -122,13 +125,66 @@ void LAppModel::LoadAssets(const csmChar* dir, const csmChar* fileName)
 
     if (_model == NULL)
     {
-        LAppPal::PrintLogLn("Failed to LoadAssets().");
+        LAppPal::PrintLogLn("[APP]Failed to LoadAssets().");
         return;
     }
 
     CreateRenderer();
 
     SetupTextures();
+
+    // 新增：传递模型信息到iOS层
+    //  已彻底修复字符串内存生命周期问题。主要改进：
+    //
+    //  1. 使用静态字符数组：采用 static char buffer[] 确保内存持久化
+    //  2. 安全的字符串拷贝：使用 strncpy 和 snprintf 进行安全字符串操作
+    //  3. 避免内存悬挂：不再使用可能失效的临时对象指针
+    Live2DCallbackBridge* callbackBridge = [Live2DCallbackBridge sharedInstance];
+    if (callbackBridge) {
+        static char gBuffer[256];
+        // 2-1 模型目录
+        csmString modelDirCsm = _modelHomeDir;               // 先转成 csmString
+        const csmChar* modelDirPtr = modelDirCsm.GetRawString();
+        strncpy(gBuffer, modelDirPtr, sizeof(gBuffer) - 1);
+        gBuffer[sizeof(gBuffer) - 1] = '\0';
+
+        // 提取模型目录名（去除路径前缀和末尾斜杠）
+        std::string modelDirStr(modelDirPtr);
+        size_t lastSlash = modelDirStr.find_last_of("/", modelDirStr.length() - 2);
+        std::string modelName = (lastSlash != std::string::npos) ? 
+            modelDirStr.substr(lastSlash + 1) : modelDirStr;
+        if (!modelName.empty() && modelName.back() == '/') {
+            modelName.pop_back();
+        }
+        
+        // 使用字符数组确保内存持久化
+        static char modelNameBuffer[256];
+        strncpy(modelNameBuffer, modelName.c_str(), sizeof(modelNameBuffer) - 1);
+        modelNameBuffer[sizeof(modelNameBuffer) - 1] = '\0';
+
+        [callbackBridge onResourceInfo:modelNameBuffer
+                          resourceType:"model_name"
+                          resourcePath:modelNameBuffer];
+
+        // 2-2 JSON 文件
+        static char jsonPathBuffer[512];
+        snprintf(jsonPathBuffer, sizeof(jsonPathBuffer), "%s/%s", modelName.c_str(), fileName);
+        [callbackBridge onResourceInfo:modelNameBuffer
+                          resourceType:"json_file"
+                          resourcePath:jsonPathBuffer];
+
+        // 2. 纹理列表
+        for (csmInt32 i = 0; i < _modelSetting->GetTextureCount(); i++) {
+            static char texturePathBuffer[512];
+            const csmChar* texFileName = _modelSetting->GetTextureFileName(i);
+            snprintf(texturePathBuffer, sizeof(texturePathBuffer), "%s/%s", modelName.c_str(), texFileName);
+            [callbackBridge onResourceInfo:modelNameBuffer
+                              resourceType:"texture"
+                              resourcePath:texturePathBuffer];
+        }
+
+    }
+
 }
 
 
@@ -331,6 +387,11 @@ void LAppModel::ReleaseMotionGroup(const csmChar* group) const
     }
 }
 
+/**
+* @brief すべてのモーションデータの解放
+*
+* すべてのモーションデータを解放する。
+*/
 void LAppModel::ReleaseMotions()
 {
     for (csmMap<csmString, ACubismMotion*>::const_iterator iter = _motions.Begin(); iter != _motions.End(); ++iter)
@@ -341,6 +402,11 @@ void LAppModel::ReleaseMotions()
     _motions.Clear();
 }
 
+/**
+* @brief すべての表情データの解放
+*
+* すべての表情データを解放する。
+*/
 void LAppModel::ReleaseExpressions()
 {
     for (csmMap<csmString, ACubismMotion*>::const_iterator iter = _expressions.Begin(); iter != _expressions.End(); ++iter)
@@ -423,7 +489,14 @@ void LAppModel::Update()
     // リップシンクの設定
     if (_lipSync)
     {
-        csmFloat32 value = 0; // リアルタイムでリップシンクを行う場合、システムから音量を取得して0〜1の範囲で値を入力します。
+        // value从外部获取，不再固定为0
+        // 使用当前设置的lipSync值
+        csmFloat32 value = _lipSyncValue;
+
+        // 添加灵敏度调节
+        value = value * _lipSyncSensitivity;
+        if (value > 1.0f) value = 1.0f;
+        if (value < 0.0f) value = 0.0f;
 
         for (csmUint32 i = 0; i < _lipSyncIds.GetSize(); ++i)
         {
@@ -451,7 +524,10 @@ CubismMotionQueueEntryHandle LAppModel::StartMotion(const csmChar* group, csmInt
     {
         if (_debugMode)
         {
-            LAppPal::PrintLogLn("[APP]can't start motion.");
+            const csmString fileName = _modelSetting->GetMotionFileName(group, no);
+            csmString path = fileName;
+            path = _modelHomeDir + path;
+            LAppPal::PrintLogLn("[APP]can't start motion: %s", path.GetRawString());
         }
         return InvalidMotionQueueEntryHandleValue;
     }
@@ -512,6 +588,27 @@ CubismMotionQueueEntryHandle LAppModel::StartRandomMotion(const csmChar* group, 
     csmInt32 no = rand() % _modelSetting->GetMotionCount(group);
 
     return StartMotion(group, no, priority, onFinishedMotionHandler, onBeganMotionHandler);
+}
+
+void LAppModel::SetLipSyncValue(csmFloat32 mouth)
+{
+    if (_model == NULL || _lipSyncIds.GetSize() == 0)
+    {
+        return;
+    }
+
+    // 更新内部存储的lipSync值
+    _lipSyncValue = mouth;
+
+    // 设置口型参数到所有lipSync参数
+//    for (csmUint32 i = 0; i < _lipSyncIds.GetSize(); ++i)
+//    {
+//        _model->SetParameterValue(_lipSyncIds[i], mouth);
+//        if (_debugMode)
+//        {
+//            LAppPal::PrintLogLn("[APP]_lipSyncIds: [%s_%f]", _lipSyncIds[i]->GetString().GetRawString(), mouth);
+//        }
+//    }
 }
 
 void LAppModel::DoDraw()

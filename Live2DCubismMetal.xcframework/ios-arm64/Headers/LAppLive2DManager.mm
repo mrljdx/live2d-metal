@@ -14,11 +14,15 @@
 #import "LAppModel.h"
 #import "LAppDefine.h"
 #import "LAppPal.h"
+#import "Live2DCallbackBridge.h"
 #import <Rendering/Metal/CubismRenderer_Metal.hpp>
 #import "Rendering/Metal/CubismRenderingInstanceSingleton_Metal.h"
 
 @interface LAppLive2DManager()
 @property (nonatomic, assign) float modelScale;   // 模型缩放
+@property (nonatomic, assign) float modelPositionX;   // 模型X坐标
+@property (nonatomic, assign) float modelPositionY;   // 模型Y坐标
+@property (nonatomic, assign) float modelMouth;   // 模型口型
 - (id)init;
 - (void)dealloc;
 @end
@@ -85,6 +89,9 @@ Csm::csmString GetPath(CFURLRef url)
         _viewMatrix = nil;
         _sceneIndex = 0;
         _modelScale = 1.0f;   // 默认不放大
+        _modelPositionX = 0.0f; // 模型X坐标
+        _modelPositionY = 0.0f; // 模型Y坐标
+        _modelMouth = 0.0f; // 闭嘴状态，办张0.5f，张嘴1.0f
         _viewMatrix = new Csm::CubismMatrix44();
 
         _renderPassDescriptor = [[MTLRenderPassDescriptor alloc] init];
@@ -202,7 +209,14 @@ Csm::csmString GetPath(CFURLRef url)
             {
                 LAppPal::PrintLogLn("[APP]hit area: [%s]", LAppDefine::HitAreaNameHead);
             }
+            
+            // 触发点击回调
+            [[Live2DCallbackBridge sharedInstance] onHitArea:LAppDefine::HitAreaNameHead 
+                                                   modelName:[NSString stringWithUTF8String:_modelDir[_sceneIndex].GetRawString()].UTF8String 
+                                                           x:x y:y];
+            
             _models[i]->SetRandomExpression();
+
         }
         else if (_models[i]->HitTest(LAppDefine::HitAreaNameBody, x, y))
         {
@@ -210,7 +224,115 @@ Csm::csmString GetPath(CFURLRef url)
             {
                 LAppPal::PrintLogLn("[APP]hit area: [%s]", LAppDefine::HitAreaNameBody);
             }
-            _models[i]->StartRandomMotion(LAppDefine::MotionGroupTapBody, LAppDefine::PriorityNormal, FinishedMotion, BeganMotion);
+            
+            // 触发点击回调
+            [[Live2DCallbackBridge sharedInstance] onHitArea:LAppDefine::HitAreaNameBody 
+                                                   modelName:[NSString stringWithUTF8String:_modelDir[_sceneIndex].GetRawString()].UTF8String 
+                                                           x:x y:y];
+            
+            // _models[i]->StartRandomMotion(LAppDefine::MotionGroupTapBody, LAppDefine::PriorityNormal, FinishedMotion, BeganMotion);
+
+            // 触发动画开始回调 - 获取实际的motion文件路径
+            const Csm::csmChar* motionGroup = LAppDefine::MotionGroupTapBody;
+            Csm::csmInt32 motionCount = _models[i]->GetModelSetting()->GetMotionCount(motionGroup);
+            LAppPal::PrintLogLn("[DEBUG] motionCount: %d", motionCount);
+            if (motionCount > 0) {
+                Csm::csmInt32 selectedIndex = rand() % motionCount;
+
+                _models[i]->StartMotion(motionGroup, selectedIndex, LAppDefine::PriorityNormal, FinishedMotion, BeganMotion);
+
+                const Csm::csmString fileName = _models[i]->GetModelSetting()->GetMotionFileName(motionGroup, selectedIndex);
+                Csm::csmString motionPath = Csm::csmString(_models[i]->GetModelHomeDir()) + fileName;
+                const Csm::csmChar* filePath = motionPath.GetRawString();
+                if (LAppDefine::DebugLogEnable)
+                {
+                    // 添加调试日志
+                    LAppPal::PrintLogLn("[DEBUG] fileName: %s", fileName.GetRawString());
+                    LAppPal::PrintLogLn("[DEBUG] modelHomeDir: %s", _models[i]->GetModelHomeDir().GetRawString());
+                    LAppPal::PrintLogLn("[DEBUG] full motionPath: %s", filePath);
+                    LAppPal::PrintLogLn("[DEBUG] motionGroup: %s, selectedIndex: %d", motionGroup, selectedIndex);
+                }
+
+                // 创建静态缓冲区来存储字符串，确保生命周期足够长
+                static char staticBuffer[512];
+                strncpy(staticBuffer, filePath, sizeof(staticBuffer) - 1);
+                staticBuffer[sizeof(staticBuffer) - 1] = '\0';
+                
+                [[Live2DCallbackBridge sharedInstance] onMotionStart:motionGroup
+                                                        motionIndex:selectedIndex
+                                                      motionFilePath:staticBuffer];
+            }
+        }
+        else
+        {
+            if (LAppDefine::DebugLogEnable)
+            {
+                LAppPal::PrintLogLn("[APP]no hit areas found, triggering motion directly");
+            }
+
+            // 处理无HitAreas的模型，直接触发Motion
+            Csm::ICubismModelSetting* setting = _models[i]->GetModelSetting();
+            if (setting)
+            {
+                // 定义支持的motion分组
+                const Csm::csmChar* motionGroups[] = { "Tap", "Flick", "FlickRight", "FlickLeft", "Flick3", "Shake" };
+                Csm::csmInt32 groupCount = sizeof(motionGroups) / sizeof(motionGroups[0]);
+                
+                // 先检查Tap分组，如果没有再随机选择其他分组
+                Csm::csmInt32 tapMotionCount = setting->GetMotionCount(LAppDefine::MotionGroupTapBody);
+                if (tapMotionCount > 0) {
+                    // 优先使用Tap分组
+                    Csm::csmInt32 selectedIndex = rand() % tapMotionCount;
+                    _models[i]->StartMotion(LAppDefine::MotionGroupTapBody, selectedIndex, LAppDefine::PriorityNormal, FinishedMotion, BeganMotion);
+
+                    const Csm::csmString fileName = setting->GetMotionFileName(LAppDefine::MotionGroupTapBody, selectedIndex);
+                    Csm::csmString motionPath = Csm::csmString(_models[i]->GetModelHomeDir()) + fileName;
+                    const Csm::csmChar* filePath = motionPath.GetRawString();
+                    
+                    if (LAppDefine::DebugLogEnable)
+                    {
+                        LAppPal::PrintLogLn("[DEBUG] Using Tap motion: %s", fileName.GetRawString());
+                    }
+                    
+                    // 创建静态缓冲区来存储字符串，确保生命周期足够长
+                    static char staticBuffer[512];
+                    strncpy(staticBuffer, filePath, sizeof(staticBuffer) - 1);
+                    staticBuffer[sizeof(staticBuffer) - 1] = '\0';
+                    
+                    [[Live2DCallbackBridge sharedInstance] onMotionStart:LAppDefine::MotionGroupTapBody
+                                                            motionIndex:selectedIndex
+                                                          motionFilePath:staticBuffer];
+                } else {
+                    // Tap分组为空，尝试其他分组
+                    for (Csm::csmInt32 j = 0; j < groupCount; j++)
+                    {
+                        Csm::csmInt32 motionCount = setting->GetMotionCount(motionGroups[j]);
+                        if (motionCount > 0) {
+                            Csm::csmInt32 selectedIndex = rand() % motionCount;
+                            _models[i]->StartMotion(motionGroups[j], selectedIndex, LAppDefine::PriorityNormal, FinishedMotion, BeganMotion);
+
+                            const Csm::csmString fileName = setting->GetMotionFileName(motionGroups[j], selectedIndex);
+                            Csm::csmString motionPath = Csm::csmString(_models[i]->GetModelHomeDir()) + fileName;
+                            const Csm::csmChar* filePath = motionPath.GetRawString();
+                            
+                            if (LAppDefine::DebugLogEnable)
+                            {
+                                LAppPal::PrintLogLn("[DEBUG] Using %s motion: %s", motionGroups[j], fileName.GetRawString());
+                            }
+                            
+                            // 创建静态缓冲区来存储字符串，确保生命周期足够长
+                            static char staticBuffer[512];
+                            strncpy(staticBuffer, filePath, sizeof(staticBuffer) - 1);
+                            staticBuffer[sizeof(staticBuffer) - 1] = '\0';
+                            
+                            [[Live2DCallbackBridge sharedInstance] onMotionStart:motionGroups[j]
+                                                                    motionIndex:selectedIndex
+                                                                  motionFilePath:staticBuffer];
+                            break; // 找到第一个有motion的分组就停止
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -288,24 +410,22 @@ Csm::csmString GetPath(CFURLRef url)
         const float drawableH = (float)drawable.texture.height;
 
         // 3. 投影矩阵补偿屏幕宽高比（防止圆形变椭圆）
-//        const float aspect = static_cast<float>(width) / static_cast<float>(height);
         const float aspect = drawableW / drawableH;
         // 投影矩阵补偿： *2 抵消官方内部 *0.5，再乘 aspect
-//        projection.Scale(aspect, 1.0f);
-        if (drawableW < drawableH) {
+        if (model->GetModel()->GetCanvasWidth() > 1.0f && drawableW < drawableH) {
             model->GetModelMatrix()->SetWidth(2.0f);
-            projection.Scale(1.0f, drawableW / drawableH);
+            projection.Scale(1.0f, aspect);
         } else {
-            projection.Scale(drawableH/drawableW, 1.0f);
+            projection.Scale(1.0f / aspect, 1.0f);
         }
 
         // TODO 提供一个全局的变量可以通过方法修改这个值从而实现自定义缩放大小
-        // 4. 模型矩阵只做这一次等比缩放
+        // 4. 模型矩阵只做这一次等比缩放，重置模型矩阵
         model->GetModelMatrix()->LoadIdentity();
         // 注意Scale方法的调用一定要在LoadIdentify之后，否则会失效
-        // const float customScale = 1.1f;
         model->GetModelMatrix()->Scale(baseScale * _modelScale, baseScale * _modelScale);
-
+        model->GetModelMatrix()->Translate(_modelPositionX, _modelPositionY);
+        model->SetLipSyncValue(_modelMouth);
 //        if (model->GetModel()->GetCanvasWidth() > 1.0f && width < height)
 //        {
 //            // 横に長いモデルを縦長ウィンドウに表示する際モデルの横サイズでscaleを算出する
@@ -494,6 +614,37 @@ Csm::csmString GetPath(CFURLRef url)
 - (void)setModelScale:(float)scale
 {
     _modelScale = scale;
+}
+
+- (void)moveModel:(float)x y:(float)y
+{
+    if (LAppDefine::DebugLogEnable)
+    {
+        LAppPal::PrintLogLn("[DEBUG]move model: x: [%f]; y: [%f]", x, y);
+    }
+    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
+    ViewController* view = [delegate viewController];
+
+    const CGFloat retinaScale = [[UIScreen mainScreen] scale];
+    // Retinaディスプレイサイズにするため倍率をかける
+    const float width = view.view.frame.size.width * retinaScale;
+    const float height = view.view.frame.size.height * retinaScale;
+    _modelPositionX += x / width * 2.0f;
+    _modelPositionY += -y / width * 2.0f;
+    if (LAppDefine::DebugLogEnable)
+    {
+        LAppPal::PrintLogLn("[DEBUG]move model: normalizedX: [%f]; normalizedY: [%f]", _modelPositionX, _modelPositionY);
+    }
+}
+
+- (void)updateLipSync:(float)mouth
+{
+    _modelMouth = mouth;
+    if (LAppDefine::DebugLogEnable)
+    {
+        LAppPal::PrintLogLn("[DEBUG]lip sync mouth: [%f]", _modelMouth);
+    }
+
 }
 
 @end

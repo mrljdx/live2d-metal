@@ -24,11 +24,15 @@
 #import <Math/CubismMatrix44.hpp>
 #import <Math/CubismViewMatrix.hpp>
 #import "Rendering/Metal/CubismRenderingInstanceSingleton_Metal.h"
+#import "LAppWavFileHandler_Common.hpp"
 
 #define BUFFER_OFFSET(bytes) ((GLubyte *)NULL + (bytes))
 
 using namespace std;
 using namespace LAppDefine;
+
+// Global WAV handler instance
+static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 
 @interface ViewController ()
 //@property (nonatomic) LAppSprite *back; //背景画像
@@ -486,6 +490,51 @@ using namespace LAppDefine;
 {
     LAppLive2DManager* manager = [LAppLive2DManager getInstance];
     [manager setModelScale:scale];
+}
+
+- (void)moveModel:(float)x y:(float)y
+{
+    LAppLive2DManager* manager = [LAppLive2DManager getInstance];
+    [manager moveModel:x y:y];
+}
+
+- (BOOL)loadWavFile:(NSString *)filePath {
+    LAppPal::PrintLogLn("[APP]loadWavFile called: $s", filePath);
+    if (!g_wavHandler) {
+        g_wavHandler = new LAppWavFileHandler_Common();
+    }
+
+    const char *path = [filePath UTF8String];
+    g_wavHandler->Start(Csm::csmString(path));
+    LAppPal::PrintLogLn("[APP]loadWavFile %s Success", filePath);
+    return YES;
+}
+
+- (float)getAudioRms {
+    if (!g_wavHandler) {
+        return 0.0f;
+    }
+    return static_cast<float>(g_wavHandler->GetRms());
+}
+
+- (BOOL)updateAudio:(float)deltaTime {
+    if (!g_wavHandler) {
+        return NO;
+    }
+    return g_wavHandler->Update(static_cast<Csm::csmFloat32>(deltaTime)) ? YES : NO;
+}
+
+- (void)releaseWavHandler {
+    if (g_wavHandler) {
+        delete g_wavHandler;
+        g_wavHandler = nullptr;
+    }
+}
+
+- (void)updateLipSync:(float)mouth
+{
+    LAppLive2DManager* manager = [LAppLive2DManager getInstance];
+    [manager updateLipSync:mouth];
 }
 
 @end

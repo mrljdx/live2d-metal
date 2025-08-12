@@ -131,6 +131,19 @@ typedef NS_ENUM(NSUInteger, SelectTarget)
  */
 - (void)setModelScale:(float)scale;
 
+/**
+ * @brief 设置指定模型的缩放
+ * @param x 目标位置值（0.0 为原始位置）
+ * @param y 目标位置值（0.0 为原始位置）
+ */
+- (void)moveModel:(float)x y:(float)y;
+
+/**
+ * @brief 同步音频播放的口型
+ * @param mouth 口型值
+ */
+- (void)updateLipSync:(float)mouth;
+
 @end
 
 #endif /* LAppLive2DManager_h */
