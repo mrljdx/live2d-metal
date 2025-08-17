@@ -43,6 +43,7 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 @property (nonatomic) Csm::CubismMatrix44 *deviceToScreen;///< デバイスからスクリーンへの行列
 @property (nonatomic) Csm::CubismViewMatrix *viewMatrix;
 @property (nonatomic, assign) CGRect lastBounds;
+//@property (nonatomic) LAppSprite *testWireSprite; // 测试线框
 @end
 
 @implementation ViewController
@@ -101,11 +102,7 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
     view.delegate = self;
 
     view.metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
-    view.metalLayer.opaque = NO;  // 设置为非不透明
-    view.backgroundColor = [UIColor clearColor];  // 设置透明背景色
     [single setMetalLayer:view.metalLayer];
-
-    NSLog(@"[Live2D] ViewController: viewDidLoad - setMetalLayer called!");
 
     _commandQueue = [device newCommandQueue];
 
@@ -138,8 +135,6 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
     CGRect bounds = self.view.bounds;   // ← 容器尺寸
     int width  = (int)bounds.size.width;
     int height = (int)bounds.size.height;
-
-    NSLog(@"[Live2D] ViewController: initializeScreen - width:%d  height:%d", width, height);
 
     // 縦サイズを基準とする
     float ratio = static_cast<float>(width) / static_cast<float>(height);
@@ -184,22 +179,17 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 //    ViewController* view = [delegate viewController];
 //    int width = view.view.frame.size.width;
 //    int height = view.view.frame.size.height;
-    NSLog(@"[Live2D] ViewController: Current bounds: %@", NSStringFromCGRect(self.view.bounds));
-    NSLog(@"[Live2D] ViewController: Last bounds: %@", NSStringFromCGRect(self.lastBounds));
-
     if (CGRectEqualToRect(self.view.bounds, self.lastBounds)) {
         NSLog(@"[Live2D] ViewController: Bounds are equal, skipping resize");
         return;
     }
     NSLog(@"[Live2D] ViewController: Bounds changed, updating");
-
     self.lastBounds = self.view.bounds;
 
     // 直接用 self.view，而不是再兜圈子拿 AppDelegate.viewController
     int width  = (int)self.lastBounds.size.width;
     int height = (int)self.lastBounds.size.height;
 
-    NSLog(@"[Live2D] ViewController: resizeScreen - width:%d  height:%d", width, height);
     // 縦サイズを基準とする
     float ratio = static_cast<float>(width) / static_cast<float>(height);
     float left = -ratio;
@@ -253,6 +243,29 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 
     NSLog(@"[Live2D] ViewController: initializeSprite - width:%f  height:%f", width, height);
 
+    CubismRenderingInstanceSingleton_Metal *single =
+            [CubismRenderingInstanceSingleton_Metal sharedManager];
+    id<MTLDevice> device = [single getMTLDevice];
+    if (!_renderSprite) {
+        NSLog(@"[Live2D] ViewController: init renderSprite");
+        _renderSprite = [[LAppModelSprite alloc]
+                initWithMyVar:0 Y:0
+                        Width:width
+                       Height:height
+                     MaxWidth:width
+                    MaxHeight:height
+                      Texture:nil];   // 线框不需要贴图
+    }
+
+//    float testVertices[8] = {
+//            -0.3f, -0.3f,  // 左下
+//            0.3f, -0.3f,  // 右下
+//            0.3f,  0.3f,  // 右上
+//            -0.3f,  0.3f   // 左上
+//    };
+//    _testWireSprite = [[LAppSprite alloc] initWithMyVar:width*0.5f Y:height*0.5f Width:width*0.5f Height:height*0.5f MaxWidth:width MaxHeight:height Texture:nil]; // 无纹理，用于线框绘制
+//    [_testWireSprite renderWireframe:testVertices count:4 r:1.0f g:0.0f b:0.0f a:0.9f];
+
 //    LAppTextureManager* textureManager = [delegate getTextureManager];
 //    const string resourcesPath = ResourcesPath;
 
@@ -293,7 +306,6 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
     float maxWidth  = self.view.bounds.size.width;
     float maxHeight = self.view.bounds.size.height;
 
-    NSLog(@"[Live2D] ViewController: resizeSprite - width:%f  height:%f", maxWidth, maxHeight);
     //背景
 //    float x = width * 0.5f;
 //    float y = height * 0.5f;
@@ -361,7 +373,6 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 
         [live2DManager onTap:x floatY:y];
 
-        // Button handling removed
         // 歯車にタップしたか
         // if ([_gear isHit:point.x PointY:pointY])
         // {
@@ -421,9 +432,8 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 }
 
 
-- (void)renderSprite:(id<MTLRenderCommandEncoder>)renderEncoder
+- (void)renderImageSprite:(id<MTLRenderCommandEncoder>)renderEncoder
 {
-    // Background and buttons removed
     // [_back renderImmidiate:renderEncoder];
     // [_gear renderImmidiate:renderEncoder];
     // [_power renderImmidiate:renderEncoder];
@@ -445,7 +455,7 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
     id<MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
 
     //モデル以外の描画
-    [self renderSprite:renderEncoder];
+    [self renderImageSprite:renderEncoder];
 
     [renderEncoder endEncoding];
 
@@ -453,8 +463,29 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
     [Live2DManager SetViewMatrix:_viewMatrix];
     [Live2DManager onUpdate:commandBuffer currentDrawable:currentDrawable depthTexture:_depthTexture];
 
+    /** 调试用，勿删
+    //增加上层绘制的窗口
+    MTLRenderPassDescriptor *topRenderPassDescriptor = [[[MTLRenderPassDescriptor alloc] init] autorelease];
+    topRenderPassDescriptor.colorAttachments[0].texture = currentDrawable.texture;
+    topRenderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionLoad; // 保持已经绘制的内容
+    // topRenderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear; // 清理已经绘制的内容
+    topRenderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
+    renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0.5f);
+
+    id<MTLRenderCommandEncoder> topRenderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:topRenderPassDescriptor];
+
+    [_testWireSprite renderImmidiate:topRenderEncoder];
+
+    [topRenderEncoder endEncoding];
+    **/
     [commandBuffer presentDrawable:currentDrawable];
     [commandBuffer commit];
+
+}
+
+- (void)dealloc
+{
+    [super dealloc];
 }
 
 - (void)switchToNextModel {
@@ -465,7 +496,7 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
     LAppLive2DManager* manager = [LAppLive2DManager getInstance];
     Csm::csmInt32 currentIndex = manager.sceneIndex;
     Csm::csmInt32 modelCount = manager.modelDir.GetSize();
-    
+
     if (modelCount > 0) {
         Csm::csmInt32 previousIndex = (currentIndex - 1 + modelCount) % modelCount;
         [manager changeScene:previousIndex];
@@ -475,15 +506,10 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 - (void)switchToModel:(int)index {
     LAppLive2DManager* manager = [LAppLive2DManager getInstance];
     Csm::csmInt32 modelCount = manager.modelDir.GetSize();
-    
+
     if (index >= 0 && index < modelCount) {
         [manager changeScene:index];
     }
-}
-
-- (void)dealloc
-{
-    [super dealloc];
 }
 
 - (void)setModelScale:(float)scale
@@ -535,6 +561,60 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 {
     LAppLive2DManager* manager = [LAppLive2DManager getInstance];
     [manager updateLipSync:mouth];
+}
+
+- (BOOL)hasClickableAreas
+{
+    LAppLive2DManager* manager = [LAppLive2DManager getInstance];
+    return [manager hasClickableAreas];
+}
+
+- (void)setShowClickableAreas:(BOOL)show
+{
+    LAppLive2DManager* manager = [LAppLive2DManager getInstance];
+    [manager setShowClickableAreas:show];
+}
+
+- (BOOL)isShowingClickableAreas
+{
+    LAppLive2DManager* manager = [LAppLive2DManager getInstance];
+    return [manager isShowingClickableAreas];
+}
+
+- (void)drawClickableAreaWireframe:(const float*)vertices 
+                       vertexCount:(int)vertexCount 
+                               r:(float)r g:(float)g b:(float)b 
+                       areaName:(NSString*)areaName {
+    LAppPal::PrintLogLn("[DEBUG] ViewController::drawClickableAreaWireframe called for: %s, color=(%.1f,%.1f,%.1f)", [areaName UTF8String], r, g, b);
+    if (!vertices || vertexCount < 3 || !_renderSprite) {
+        LAppPal::PrintLogLn("[DEBUG] ViewController::drawClickableAreaWireframe early return: vertices=%p, vertexCount=%d, _renderSprite=%p",
+                           vertices, vertexCount, _renderSprite);
+        return;
+    }
+
+    // 获取窗口尺寸
+    int width = (int)self.view.bounds.size.width;
+    int height = (int)self.view.bounds.size.height;
+    
+    LAppPal::PrintLogLn("[DEBUG] Window size: %dx%d, rendering %d vertices for %s", 
+                       width, height, vertexCount, [areaName UTF8String]);
+
+    // 打印所有顶点坐标用于调试
+    for (int i = 0; i < (vertexCount < 4 ? vertexCount : 4); i++) {
+        LAppPal::PrintLogLn("[DEBUG] Boundary vertex[%d]: (%.2f, %.2f)", i, vertices[i*2], vertices[i*2+1]);
+    }
+
+    // 使用 LAppSprite 的线框绘制功能
+    // 注意：坐标已经是标准化设备坐标，不需要额外的坐标转换
+
+    // 2. 把顶点直接塞进 sprite 的缓存里
+    [_renderSprite renderWireframe:vertices count:vertexCount
+                                    r:r g:g b:b a:0.9f];
+
+    LAppPal::PrintLogLn("[DEBUG] ViewController::drawClickableAreaWireframe completed for: %s", [areaName UTF8String]);
+    
+    // 避免未使用参数警告
+    (void)areaName;
 }
 
 @end

@@ -635,6 +635,75 @@ void LAppModel::Draw(CubismMatrix44& matrix)
     DoDraw();
 }
 
+void LAppModel::DrawWireFrame(CubismMatrix44& matrix, csmFloat32 r, csmFloat32 g, csmFloat32 b, csmFloat32 a)
+{
+    if (_model == NULL || _modelSetting == NULL)
+    {
+        return;
+    }
+    
+    matrix.MultiplyByMatrix(_modelMatrix);
+
+    // 设置矩阵用于wireframe绘制
+    GetRenderer<Rendering::CubismRenderer_Metal>()->SetMvpMatrix(&matrix);
+    
+    // 使用边界框绘制所有可点击区域
+    for (csmInt32 i = 0; i < _modelSetting->GetHitAreasCount(); i++)
+    {
+        const csmChar* hitAreaName = _modelSetting->GetHitAreaName(i);
+        const CubismIdHandle drawID = _modelSetting->GetHitAreaId(i);
+        
+        if (drawID)
+        {
+            const csmInt32 drawableIndex = _model->GetDrawableIndex(drawID);
+            if (drawableIndex >= 0)
+            {
+                const csmInt32 vertexCount = _model->GetDrawableVertexCount(drawableIndex);
+                const csmFloat32* vertices = _model->GetDrawableVertices(drawableIndex);
+                
+                if (vertexCount >= 3 && vertices)
+                {
+                    // 计算边界框
+                    csmFloat32 minX = vertices[0];
+                    csmFloat32 maxX = vertices[0];
+                    csmFloat32 minY = vertices[1];
+                    csmFloat32 maxY = vertices[1];
+
+                    for (csmInt32 j = 1; j < vertexCount; j++)
+                    {
+                        csmFloat32 x = vertices[j * 2];
+                        csmFloat32 y = vertices[j * 2 + 1];
+
+                        minX = x < minX ? x : minX;
+                        maxX = x > maxX ? x : maxX;
+                        minY = y < minY ? y : minY;
+                        maxY = y > maxY ? y : maxY;
+                    }
+
+                    // 创建边界框顶点
+                    csmFloat32 boundaryVertices[8] = {
+                        minX, minY,  // 左下角
+                        maxX, minY,  // 右下角
+                        maxX, maxY,  // 右上角
+                        minX, maxY   // 左上角
+                    };
+
+                    // 这里应该调用一个专门的线框渲染器
+                    // 由于Metal渲染器限制，我们使用简化的方法
+                    // 实际实现需要集成到Metal渲染管线中
+                    
+                    // 注意：这里只是计算边界框，实际绘制需要在渲染管线中完成
+                    if (LAppDefine::DebugLogEnable)
+                    {
+                        LAppPal::PrintLogLn("[DEBUG] Wireframe bounds for %s: [%.2f,%.2f,%.2f,%.2f]", 
+                                          hitAreaName, minX, minY, maxX, maxY);
+                    }
+                }
+            }
+        }
+    }
+}
+
 csmBool LAppModel::HitTest(const csmChar* hitAreaName, csmFloat32 x, csmFloat32 y)
 {
     // 透明時は当たり判定なし。

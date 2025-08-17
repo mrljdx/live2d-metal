@@ -51,6 +51,7 @@ typedef struct
         _pipelineState = nil;
         _vertexBuffer = nil;
         _fragmentBuffer = nil;
+        _wireframePipeline = nil;
 
         CubismRenderingInstanceSingleton_Metal *single = [CubismRenderingInstanceSingleton_Metal sharedManager];
         id <MTLDevice> device = [single getMTLDevice];
@@ -58,6 +59,8 @@ typedef struct
         [self SetMTLBuffer:device MaxWidth:maxWidth MaxHeight:maxHeight];
 
         [self SetMTLFunction:device];
+
+        [self SetWireframePipeline:device];
     }
 
     return self;
@@ -83,36 +86,68 @@ typedef struct
         _fragmentBuffer = nil;
     }
 
+    if (_wireframePipeline != nil)
+    {
+        _wireframePipeline = nil;
+    }
+
     [super dealloc];
 }
 
 - (void)renderImmidiate:(id<MTLRenderCommandEncoder>)renderEncoder
 {
-    CubismRenderingInstanceSingleton_Metal *single = [CubismRenderingInstanceSingleton_Metal sharedManager];
-    id <MTLDevice> device = [single getMTLDevice];
+    if (_texture == nil) {
+        /* ---------- 线框渲染 ---------- */
+        if (_wireframeVertexCount < 2 || !_vertexBuffer) return;
 
-    float width = _rect.right - _rect.left;
-    float height = _rect.up - _rect.down;
+        // 1️⃣ 使用线框专用 pipeline（无纹理，直接 RGBA）
+        [renderEncoder setRenderPipelineState:_wireframePipeline];
+        [renderEncoder setVertexBuffer:_vertexBuffer offset:0 atIndex:0];
+        if(_wireframePipeline == NULL)
+        {
+            NSLog(@" ERROR: _wireframePipeline is NULL");
+            return;
+        }
+        // 2️⃣ 传入颜色（来自 SetRenderWireframe 设置的 RGBA）
+        vector_float4 color = { _spriteColorR, _spriteColorG, _spriteColorB, _spriteColorA };
+        [renderEncoder setFragmentBytes:&color length:sizeof(color) atIndex:2];
 
-    //テクスチャ設定
-    [renderEncoder setFragmentTexture:_texture atIndex:0];
+        // 3️⃣ 画线
+        [renderEncoder drawPrimitives:MTLPrimitiveTypeLineStrip
+                          vertexStart:0
+                          vertexCount:_wireframeVertexCount];
 
-    [renderEncoder setVertexBuffer:_vertexBuffer offset:0 atIndex:0];
-    [renderEncoder setVertexBuffer:_fragmentBuffer offset:0 atIndex:1];
-    if(_pipelineState == NULL)
-    {
-      return;
+//        LAppPal::PrintLogLn("[DEBUG] LAppSprite::renderImmidiate rendering wireframe with %d vertices，color=(%.1f,%.1f,%.1f,%.1f)",
+//                _wireframeVertexCount, _spriteColorR, _spriteColorG, _spriteColorB, _spriteColorA);
     }
-    // パイプライン状態オブジェクトを設定する
-    [renderEncoder setRenderPipelineState:_pipelineState];
+    else
+    {
+        CubismRenderingInstanceSingleton_Metal *single = [CubismRenderingInstanceSingleton_Metal sharedManager];
+        id <MTLDevice> device = [single getMTLDevice];
 
-    vector_float2 metalUniforms = (vector_float2){width,height};
-    [renderEncoder setVertexBytes:&metalUniforms length:sizeof(vector_float2) atIndex:2];
+        float width = _rect.right - _rect.left;
+        float height = _rect.up - _rect.down;
 
-    BaseColor uniform;
-    uniform.baseColor = (vector_float4){ _spriteColorR, _spriteColorG, _spriteColorB, _spriteColorA };
-    [renderEncoder setFragmentBytes:&uniform length:sizeof(BaseColor) atIndex:2];
-    [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
+        //テクスチャ設定
+        [renderEncoder setFragmentTexture:_texture atIndex:0];
+
+        [renderEncoder setVertexBuffer:_vertexBuffer offset:0 atIndex:0];
+        [renderEncoder setVertexBuffer:_fragmentBuffer offset:0 atIndex:1];
+        if(_pipelineState == NULL)
+        {
+            return;
+        }
+        // パイプライン状態オブジェクトを設定する
+        [renderEncoder setRenderPipelineState:_pipelineState];
+
+        vector_float2 metalUniforms = (vector_float2){width,height};
+        [renderEncoder setVertexBytes:&metalUniforms length:sizeof(vector_float2) atIndex:2];
+
+        BaseColor uniform;
+        uniform.baseColor = (vector_float4){ _spriteColorR, _spriteColorG, _spriteColorB, _spriteColorA };
+        [renderEncoder setFragmentBytes:&uniform length:sizeof(BaseColor) atIndex:2];
+        [renderEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
+    }
 }
 
 - (void)resizeImmidiate:(float)x Y:(float)y Width:(float)width Height:(float)height MaxWidth:(float)maxWidth MaxHeight:(float)maxHeight
@@ -256,4 +291,117 @@ typedef struct
         return nil;
     }
 }
+
+- (void)SetWireframePipeline:(id<MTLDevice>)device
+{
+    if (_wireframePipeline) return;
+
+    MTLCompileOptions *opt = [MTLCompileOptions new];
+    opt.languageVersion = MTLLanguageVersion2_1;
+
+    NSString *src = @R"(
+        #include <metal_stdlib>
+        using namespace metal;
+        struct WireInOut { float4 position [[position]]; };
+        vertex WireInOut wireVS(constant float4 *pos [[buffer(0)]], uint vid [[vertex_id]]) {
+            WireInOut out; out.position = pos[vid]; return out;
+        }
+        fragment float4 wireFS(constant float4 &color [[buffer(2)]]) { return color; }
+    )";
+
+    NSError *err;
+    id<MTLLibrary> lib = [device newLibraryWithSource:src options:opt error:&err];
+    id<MTLFunction> vs = [lib newFunctionWithName:@"wireVS"];
+    id<MTLFunction> fs = [lib newFunctionWithName:@"wireFS"];
+
+    MTLRenderPipelineDescriptor *desc = [[MTLRenderPipelineDescriptor alloc] init];
+    desc.vertexFunction   = vs;
+    desc.fragmentFunction = fs;
+    desc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+    desc.colorAttachments[0].blendingEnabled = YES;
+    desc.colorAttachments[0].rgbBlendOperation   = MTLBlendOperationAdd;
+    desc.colorAttachments[0].alphaBlendOperation = MTLBlendOperationAdd;
+    desc.colorAttachments[0].sourceRGBBlendFactor  = MTLBlendFactorSourceAlpha;
+    desc.colorAttachments[0].sourceAlphaBlendFactor= MTLBlendFactorSourceAlpha;
+    desc.colorAttachments[0].destinationRGBBlendFactor  = MTLBlendFactorOneMinusSourceAlpha;
+    desc.colorAttachments[0].destinationAlphaBlendFactor= MTLBlendFactorOneMinusSourceAlpha;
+
+    _wireframePipeline = [device newRenderPipelineStateWithDescriptor:desc error:&err];
+}
+
+- (void)renderWireframe:(const float*)vertices
+                  count:(int)vertexCount
+                      r:(float)r g:(float)g b:(float)b a:(float)a
+{
+    if (vertexCount < 3 || !vertices) {
+        return;
+    }
+
+    // 计算包围盒，用于更新 _rect
+    float minX = vertices[0], maxX = vertices[0];
+    float minY = vertices[1], maxY = vertices[1];
+    for (int i = 1; i < vertexCount; ++i) {
+        float x = vertices[i * 2];
+        float y = vertices[i * 2 + 1];
+        minX = fminf(minX, x);
+        maxX = fmaxf(maxX, x);
+        minY = fminf(minY, y);
+        maxY = fmaxf(maxY, y);
+    }
+    _rect.left   = minX;
+    _rect.right  = maxX;
+    _rect.down   = minY;
+    _rect.up     = maxY;
+
+    CubismRenderingInstanceSingleton_Metal *single =
+            [CubismRenderingInstanceSingleton_Metal sharedManager];
+    id<MTLDevice> device = [single getMTLDevice];
+
+    // ---------- 顶点 buffer ----------
+    vector_float4* pos = new vector_float4[vertexCount + 1]; // +1 用于闭合
+
+    // 使用UIScreen获取屏幕尺寸
+//    CGRect screenBounds = [[UIScreen mainScreen] bounds];
+//    float screenWidth = screenBounds.size.width;
+//    float screenHeight = screenBounds.size.height;
+
+    for (int i = 0; i < vertexCount; ++i) {
+        // 直接使用标准化设备坐标
+        float x = vertices[i * 2];
+        float y = vertices[i * 2 + 1];
+
+        // 将NDC坐标直接转换为Metal坐标系
+        // 注意：Metal的Y轴向上，范围也是-1到1
+        pos[i] = { x, -y, 0.0f, 1.0f }; // 翻转Y轴
+    }
+
+    // 闭合线段：重复第一个顶点，也需要翻转Y轴
+    pos[vertexCount] = { vertices[0], -vertices[1], 0.0f, 1.0f };
+    _vertexBuffer = [device newBufferWithBytes:pos
+                                        length:sizeof(vector_float4) * (vertexCount + 1)
+                                       options:MTLResourceStorageModeShared];
+    delete[] pos;
+
+    _spriteColorR = r;
+    _spriteColorG = g;
+    _spriteColorB = b;
+    _spriteColorA = a;
+
+    _wireframeVertexCount = vertexCount + 1; // 因为要闭合
+
+    // 即使线框渲染不需要UV，但顶点着色器需要texCoords输入，所以提供占位数据
+    vector_float2* uv = new vector_float2[vertexCount + 1];
+    for (int i = 0; i <= vertexCount; ++i) {
+        uv[i] = { 0.0f, 0.0f }; // UV坐标不影响纯色渲染
+    }
+    _fragmentBuffer = [device newBufferWithBytes:uv
+                                          length:sizeof(vector_float2) * (vertexCount + 1)
+                                         options:MTLResourceStorageModeShared];
+    delete[] uv;
+
+    // 打印调试信息
+    LAppPal::PrintLogLn("[DEBUG] LAppSprite::SetRenderWireframe updated with %d vertices, color=(%.1f,%.1f,%.1f,%.1f)",
+            vertexCount, r, g, b, a);
+}
+
 @end

@@ -37,6 +37,8 @@ typedef NS_ENUM(NSUInteger, SelectTarget)
 @property (nonatomic) float clearColorB;
 
 @property (nonatomic) Csm::csmVector<Csm::csmString> modelDir; ///< モデルディレクトリ名のコンテナ
+@property (nonatomic) BOOL showClickableAreas; ///< 是否显示可点击区域
+@property (nonatomic, strong) NSMutableDictionary<NSString *, LAppSprite *> *wireSprites; // 专门画线框
 
 /**
  * @brief クラスのインスタンスを返す。
@@ -143,6 +145,30 @@ typedef NS_ENUM(NSUInteger, SelectTarget)
  * @param mouth 口型值
  */
 - (void)updateLipSync:(float)mouth;
+
+/**
+ * @brief 检查是否有可点击区域
+ * @return 如果有可点击区域返回YES，否则返回NO
+ */
+- (BOOL)hasClickableAreas;
+
+/**
+ * @brief 设置是否显示可点击区域
+ * @param show 是否显示
+ */
+- (void)setShowClickableAreas:(BOOL)show;
+
+/**
+ * @brief 检查是否正在显示可点击区域
+ * @return 如果正在显示返回YES，否则返回NO
+ */
+- (BOOL)isShowingClickableAreas;
+
+/**
+ * 绘制可点击区域
+ * @param model
+ */
+- (void) drawClickableAreas:(LAppModel*)model;
 
 @end
 

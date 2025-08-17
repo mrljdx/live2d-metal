@@ -278,8 +278,7 @@
 
 - (BOOL)updateAudio:(float)deltaTime {
     if ([_internalViewController respondsToSelector:@selector(updateAudio:)]) {
-        [_internalViewController updateAudio:deltaTime];
-        return YES;
+        return [_internalViewController updateAudio:deltaTime];
     } else {
         NSLog(@"[Live2D] Warning: updateAudio method not available");
         return NO;
@@ -310,6 +309,35 @@
 
     // 调用实际的唇形同步更新方法
     [self updateLipSync:rms];
+}
+
+- (BOOL)hasClickableAreas
+{
+    if ([_internalViewController respondsToSelector:@selector(hasClickableAreas)]) {
+        return [_internalViewController hasClickableAreas];
+    } else {
+        NSLog(@"[Live2D] Warning: hasClickableAreas method not available");
+        return NO;
+    }
+}
+
+- (void)setShowClickableAreas:(BOOL)show
+{
+    if ([_internalViewController respondsToSelector:@selector(setShowClickableAreas:)]) {
+        [_internalViewController setShowClickableAreas:show];
+    } else {
+        NSLog(@"[Live2D] Warning: setShowClickableAreas method not available");
+    }
+}
+
+- (BOOL)isShowingClickableAreas
+{
+    if ([_internalViewController respondsToSelector:@selector(isShowingClickableAreas)]) {
+        return [_internalViewController isShowingClickableAreas];
+    } else {
+        NSLog(@"[Live2D] Warning: isShowingClickableAreas method not available");
+        return NO;
+    }
 }
 
 @end

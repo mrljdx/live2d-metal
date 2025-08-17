@@ -119,4 +119,22 @@
  */
 - (void)updateLipSync:(float)mouth;
 
+- (BOOL)hasClickableAreas;
+- (void)setShowClickableAreas:(BOOL)show;
+- (BOOL)isShowingClickableAreas;
+
+/**
+ * @brief 绘制可点击区域的线框
+ * @param vertices 顶点数组
+ * @param vertexCount 顶点数量
+ * @param r 红色分量
+ * @param g 绿色分量
+ * @param b 蓝色分量
+ * @param areaName 区域名称
+ */
+- (void)drawClickableAreaWireframe:(const float*)vertices 
+                       vertexCount:(int)vertexCount
+                       r:(float)r g:(float)g b:(float)b
+                       areaName:(NSString*)areaName;
+
 @end

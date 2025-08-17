@@ -17,6 +17,9 @@
 @property (nonatomic) float spriteColorB;
 @property (nonatomic) float spriteColorA;
 @property (strong, nonatomic) id <MTLRenderPipelineState> pipelineState;
+@property (nonatomic) int wireVertexCount;
+@property (nonatomic) id<MTLRenderPipelineState> wireframePipeline;
+@property (nonatomic) int wireframeVertexCount;
 /**
  * @brief Rect 構造体。
  */
@@ -91,6 +94,12 @@ typedef struct
  * @brief MTLRenderPipelineState設定
  */
 - (void)SetMTLRenderPipelineState:(id <MTLDevice>)device pipelineDescriptor:(MTLRenderPipelineDescriptor*)pipelineDescriptor;
+
+/**
+ * @brief 绘制线框
+ */
+- (void)renderWireframe:(const float*)vertices count:(int)vertexCount
+                           r:(float)r g:(float)g b:(float)b a:(float)a;
 
 @end
 

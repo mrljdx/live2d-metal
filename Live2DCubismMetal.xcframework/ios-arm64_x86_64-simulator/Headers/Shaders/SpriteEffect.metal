@@ -31,3 +31,19 @@ fragment float4 fragmentShader(ColorInOut       in      [[ stage_in ]],
     float4 color = texture.sample(colorSampler, in.texCoords) * uniform.color;
     return color;
 }
+
+// ---------- 线框专用 ----------
+struct WireInOut {
+    float4 position [[position]];
+};
+
+vertex WireInOut wireVS(constant float4 *pos [[buffer(0)]],
+                        uint vid [[vertex_id]]) {
+    WireInOut out;
+    out.position = pos[vid];
+    return out;
+}
+
+fragment float4 wireFS(constant float4 &color [[buffer(2)]]) {
+    return color;   // 不采样纹理，直接返回传入颜色
+}

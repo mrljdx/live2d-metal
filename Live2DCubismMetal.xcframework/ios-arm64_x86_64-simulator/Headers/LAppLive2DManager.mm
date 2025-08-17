@@ -92,6 +92,7 @@ Csm::csmString GetPath(CFURLRef url)
         _modelPositionX = 0.0f; // 模型X坐标
         _modelPositionY = 0.0f; // 模型Y坐标
         _modelMouth = 0.0f; // 闭嘴状态，办张0.5f，张嘴1.0f
+        _showClickableAreas = NO; // 默认不显示可点击区域，调试情况下设为YES
         _viewMatrix = new Csm::CubismMatrix44();
 
         _renderPassDescriptor = [[MTLRenderPassDescriptor alloc] init];
@@ -137,6 +138,9 @@ Csm::csmString GetPath(CFURLRef url)
 
     delete _viewMatrix;
     _viewMatrix = nil;
+
+    [_wireSprites removeAllObjects];
+    _wireSprites = nil;
 
     [self releaseAllModel];
     [super dealloc];
@@ -265,6 +269,10 @@ Csm::csmString GetPath(CFURLRef url)
         }
         else
         {
+            if ([self hasClickableAreas])
+            {
+                return;
+            }
             if (LAppDefine::DebugLogEnable)
             {
                 LAppPal::PrintLogLn("[APP]no hit areas found, triggering motion directly");
@@ -519,6 +527,25 @@ Csm::csmString GetPath(CFURLRef url)
             [renderEncoder endEncoding];
             [depthSprite dealloc];
         }
+
+        // 如果需要显示并且有可点击的区域则绘制可点击区域
+        if (_showClickableAreas && [self hasClickableAreas])
+        {
+            // FIXME 不同于Android的渲染方式，iOS不能使用drawClickableAreas来渲染线框到Metal中，在LAppLive2DManager中使用 drawWireFrameForModel 进行处理
+            // [self drawClickableAreas:model];
+            // 创建新的渲染命令编码器用于线框绘制
+            MTLRenderPassDescriptor *wireframeRenderPass = [[[MTLRenderPassDescriptor alloc] init] autorelease];
+            wireframeRenderPass.colorAttachments[0].texture = drawable.texture;
+            wireframeRenderPass.colorAttachments[0].loadAction = MTLLoadActionLoad;
+            wireframeRenderPass.colorAttachments[0].storeAction = MTLStoreActionStore;
+            wireframeRenderPass.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1);
+            id<MTLRenderCommandEncoder> wireframeEncoder = [commandBuffer renderCommandEncoderWithDescriptor:wireframeRenderPass];
+
+            // 使用改进的wireframe绘制方法
+            [self drawWireFrameForModel:model currentDrawable:drawable renderEncoder:wireframeEncoder];
+
+            [wireframeEncoder endEncoding];
+        }
     }
 }
 
@@ -645,6 +672,407 @@ Csm::csmString GetPath(CFURLRef url)
         LAppPal::PrintLogLn("[DEBUG]lip sync mouth: [%f]", _modelMouth);
     }
 
+}
+
+- (BOOL)hasClickableAreas
+{
+    if (_models.GetSize() == 0) return NO;
+    
+    LAppModel* model = [self getModel:0];
+    if (!model || !model->GetModelSetting()) return NO;
+    
+    const Csm::csmInt32 hitAreaCount = model->GetModelSetting()->GetHitAreasCount();
+    return hitAreaCount > 0;
+}
+
+- (void)setShowClickableAreas:(BOOL)show
+{
+    _showClickableAreas = show;
+    if (LAppDefine::DebugLogEnable)
+    {
+        LAppPal::PrintLogLn("[DEBUG] Set show clickable areas: %s", show ? "YES" : "NO");
+    }
+}
+
+- (BOOL)isShowingClickableAreas
+{
+    return _showClickableAreas;
+}
+
+- (void) drawWireFrameForModel:(LAppModel*)model currentDrawable:(id<CAMetalDrawable>)drawable renderEncoder:(id<MTLRenderCommandEncoder>)renderEncoder
+{
+    if (!model || !model->GetModelSetting() || !renderEncoder)
+    {
+        return;
+    }
+
+    const Csm::csmInt32 hitAreaCount = model->GetModelSetting()->GetHitAreasCount();
+    if (hitAreaCount <= 0) return;
+
+    // 获取设备信息和尺寸
+//    CubismRenderingInstanceSingleton_Metal *single = [CubismRenderingInstanceSingleton_Metal sharedManager];
+//    id<MTLDevice> device = [single getMTLDevice];
+    
+//    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
+//    ViewController* view = [delegate viewController];
+
+//    const CGFloat retinaScale = [[UIScreen mainScreen] scale];
+//    const float width = view.view.frame.size.width;
+//    const float height = view.view.frame.size.height;
+
+//    const float deviceWidth = width * retinaScale;
+//    const float deviceHeight = height * retinaScale;
+    // FIXME 注意，这里必须使用drawable的宽高，因为设备的宽高是固定不变的，在横屏切换的时候就会出现异常
+    const float width = (float)drawable.texture.width;
+    const float height = (float)drawable.texture.height;
+
+    // 获取当前模型的变换矩阵
+    Csm::CubismMatrix44 modelMatrix;
+    modelMatrix.LoadIdentity();
+
+    // 应用模型的缩放和位移
+    const float canvasWidth = model->GetModel()->GetCanvasWidth();
+    const float canvasHeight = model->GetModel()->GetCanvasHeight();
+
+    const float windowAspect = width / height;
+    const float canvasAspect = canvasWidth / canvasHeight;
+
+    if (LAppDefine::DebugLogEnable)
+    {
+        LAppPal::PrintLogLn("[DEBUG] Window: %.1fx%.1f, Aspect: (%f); Canvas: %.1fx%.1f, Aspect: (%.1f), Position: (%.1f,%.1f)",
+                width, height, windowAspect, canvasWidth, canvasHeight, canvasAspect, _modelPositionX, _modelPositionY);
+    }
+
+    // 根据宽高比调整投影矩阵，保持模型比例
+    if (width < height)
+    {
+        if (canvasWidth < canvasHeight) {
+            const float scaleX = (1.0f / windowAspect) / canvasWidth * _modelScale;
+            const float scaleY = 2.0f / canvasHeight * _modelScale;
+            modelMatrix.Scale(scaleX, scaleY);
+            modelMatrix.Translate(scaleX * _modelPositionX, scaleY * _modelPositionY);
+        } else {
+            // Rice
+            const float scaleX = (1.0f / windowAspect) / canvasHeight * _modelScale;
+            const float scaleY = canvasAspect / canvasWidth * _modelScale;
+            if(canvasWidth == canvasHeight) {
+                modelMatrix.Scale(2.0f * scaleX, 2.0f * scaleY);
+                modelMatrix.Translate((1.0f / windowAspect) * _modelPositionX, _modelPositionY);
+            } else {
+                modelMatrix.Scale(scaleX, scaleY);
+                // 模型尺寸只需要水平方向平移就可以了，垂直方向需要x屏幕的比例
+                modelMatrix.Translate(_modelPositionX, windowAspect * _modelPositionY);
+            }
+        }
+    }
+    else
+    {
+        // 横屏模式
+        // 确保线框绘制的宽高比例正常
+        if (canvasWidth < canvasHeight) {
+            const float scaleX = (1.0f / windowAspect) / canvasWidth * _modelScale;
+            const float scaleY = 2.0f / canvasHeight * _modelScale;
+            modelMatrix.Scale(scaleX, scaleY);
+            modelMatrix.Translate((1.0f / windowAspect) * _modelPositionX, (1.0f / canvasWidth * _modelScale) * _modelPositionY);
+            if (LAppDefine::DebugLogEnable) {
+                LAppPal::PrintLogLn("[DEBUG] Horizonal[0] Canvas Draw And Translate scaleX: [%.1f] scaleY: [%.1f]", scaleX, scaleY);
+            }
+        } else {
+            // Rice
+            const float scaleX = (2.0f / windowAspect) / canvasHeight * _modelScale;
+            const float scaleY = (2.0f * canvasAspect) / canvasWidth * _modelScale;
+            modelMatrix.Scale(scaleX, scaleY);
+            modelMatrix.Translate((1.0f / windowAspect) * _modelPositionX, _modelPositionY);
+            if (LAppDefine::DebugLogEnable) {
+                LAppPal::PrintLogLn("[DEBUG] Horizonal[1] Canvas Draw And Translate scaleX: [%.1f] scaleY: [%.1f]", scaleX, scaleY);
+            }
+        }
+    }
+
+    // 检查当前矩阵
+    const float* matrix = modelMatrix.GetArray();
+
+    // 遍历所有可点击区域并绘制线框
+    for (Csm::csmInt32 i = 0; i < hitAreaCount; i++)
+    {
+        const Csm::csmChar *hitAreaName = model->GetModelSetting()->GetHitAreaName(i);
+        const Csm::CubismIdHandle drawID = model->GetModelSetting()->GetHitAreaId(i);
+
+        if (model->GetModel() && drawID)
+        {
+            const Csm::csmInt32 drawableIndex = model->GetModel()->GetDrawableIndex(drawID);
+            if (drawableIndex >= 0)
+            {
+                const Csm::csmInt32 vertexCount = model->GetModel()->GetDrawableVertexCount(drawableIndex);
+                const Csm::csmFloat32 *vertices = model->GetModel()->GetDrawableVertices(drawableIndex);
+
+                if (vertexCount >= 3 && vertices)
+                {
+                    // 记录边界框信息
+                    Csm::csmFloat32 minX = vertices[0];
+                    Csm::csmFloat32 maxX = vertices[0];
+                    Csm::csmFloat32 minY = vertices[1];
+                    Csm::csmFloat32 maxY = vertices[1];
+
+                    for (Csm::csmInt32 j = 1; j < vertexCount; j++)
+                    {
+                        Csm::csmFloat32 x = vertices[j * 2];
+                        Csm::csmFloat32 y = vertices[j * 2 + 1];
+
+                        minX = x < minX ? x : minX;
+                        maxX = x > maxX ? x : maxX;
+                        minY = y < minY ? y : minY;
+                        maxY = y > maxY ? y : maxY;
+                    }
+
+                    // 应用模型变换到边界框顶点（转换为标准化设备坐标）
+                    Csm::csmFloat32 boundaryVertices[8] = {
+                        minX, minY,
+                        maxX, minY,
+                        maxX, maxY,
+                        minX, maxY
+                    };
+
+                    // 应用模型变换矩阵到边界框顶点，使用与模型渲染相同的变换
+                    for (int k = 0; k < 4; k++) {
+                        float x = boundaryVertices[k * 2]; // 原始 x
+                        float y = boundaryVertices[k * 2 + 1]; // 原始 y
+
+                        // 直接转换为NDC坐标（-1到1）
+                        // 1. 先得到正确的 NDC
+                        float ndcX = matrix[0] * x + matrix[12];
+                        float ndcY = matrix[5] * y + matrix[13];
+                        // 因为matrix已经包含了正确的变换
+                        // 只用了 matrix[0] 和 matrix[5]（缩放）+ matrix[12]、matrix[13]（平移）
+                        boundaryVertices[k * 2] = ndcX; // 第 k 个顶点的 x
+                        boundaryVertices[k * 2 + 1] = -ndcY; // 第 k 个顶点的 y， 关键：直接取反，否则会导致整个线框绘制倒置180度
+
+                        if (LAppDefine::DebugLogEnable) {
+                            LAppPal::PrintLogLn("[DEBUG] Transform[%d]: (%f, %f) -> (%f, %f)", k, x, y,
+                                boundaryVertices[k * 2], boundaryVertices[k * 2 + 1]);
+                        }
+                    }
+
+                    // 根据区域名称选择颜色（使用更亮的颜色）
+                    float colorR = 0.0f, colorG = 1.0f, colorB = 0.0f; // 默认绿色
+                    if (strcmp(hitAreaName, "Head") == 0) {
+                        colorR = 1.0f; colorG = 0.2f; colorB = 0.2f; // 头部亮红色
+                    } else if (strcmp(hitAreaName, "Body") == 0) {
+                        colorR = 0.2f; colorG = 0.2f; colorB = 1.0f; // 身体亮蓝色
+                    }
+
+                    // 通过 ViewController 绘制边界框线框
+                    if (LAppDefine::DebugLogEnable)
+                    {
+                        LAppPal::PrintLogLn("[DEBUG] Drawing boundary box for area: %s, bounds=[%.2f,%.2f,%.2f,%.2f]",
+                                hitAreaName, minX, minY, maxX, maxY);
+                    }
+                    // 计算边界框中心（NDC 坐标）
+                    float centerX = (boundaryVertices[0] + boundaryVertices[2] + boundaryVertices[4] + boundaryVertices[6]) / 4.0f;
+                    float centerY = (boundaryVertices[1] + boundaryVertices[3] + boundaryVertices[5] + boundaryVertices[7]) / 4.0f;
+
+                    // 将 NDC (-1~1) 转换为屏幕坐标 (0~width, 0~height)
+                    float screenX = (centerX + 1.0f) * 0.5f * width;
+                    float screenY = (1.0f - centerY) * 0.5f * height; // Y 轴翻转
+
+                    // 计算边界框在屏幕上的实际宽高（用于 LAppSprite 的 Width/Height）
+                    float boxWidth = (maxX - minX) * matrix[0] * 0.5f * width;
+                    float boxHeight = (maxY - minY) * matrix[5] * 0.5f * height;
+                    if (LAppDefine::DebugLogEnable)
+                    {
+                        LAppPal::PrintLogLn("[DEBUG] Drawing wireframeSprite: %s, centerX=%.2f, centerY=%.2f, Width= %.2f,Height=%.2f,MaxWidth=%.2f, MaxHeight=%.2f",
+                                hitAreaName, screenX, screenY, boxWidth, boxHeight, width, height);
+
+                    }
+
+                    LAppSprite *wireframeSprite = _wireSprites[[NSString stringWithUTF8String:hitAreaName]];
+                    if (!wireframeSprite) {
+                        wireframeSprite = [[LAppSprite alloc] initWithMyVar:screenX Y:screenY Width:boxWidth Height:boxHeight
+                                                                   MaxWidth:width MaxHeight:height Texture:nil];
+                    }
+                    // 使用LAppSprite直接绘制线框 - 准备顶点数据
+                    [wireframeSprite renderWireframe:boundaryVertices count:4
+                                           r:colorR g:colorG b:colorB a:0.9f];
+                    // 使用提供的renderEncoder进行立即绘制
+                    [wireframeSprite renderImmidiate:renderEncoder];
+                }
+            }
+        }
+    }
+    
+    // ARC handles memory management automatically
+}
+
+/**
+ * 此方法以标记为废弃
+ * @deprecated 使用 drawWireFrameForModel 来绘制Live2D模型可点击区域
+ * @param model
+ */
+- (void) drawClickableAreas:(LAppModel*)model
+{
+    if (!model || !model->GetModelSetting()) return;
+
+    const Csm::csmInt32 hitAreaCount = model->GetModelSetting()->GetHitAreasCount();
+    if (hitAreaCount <= 0) return;
+
+    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
+    ViewController* view = [delegate viewController];
+    
+    // 获取屏幕尺寸（使用实际视图尺寸，不是retina scale）
+    const CGFloat retinaScale = [[UIScreen mainScreen] scale];
+    const float width = view.view.frame.size.width;
+    const float height = view.view.frame.size.height;
+
+    // 获取当前模型的变换矩阵
+    Csm::CubismMatrix44 modelMatrix;
+    modelMatrix.LoadIdentity();
+
+    // 应用模型的缩放和位移，同时对绘制的线框也需要同步缩放和移动
+    const float canvasWidth = model->GetModel()->GetCanvasWidth() * retinaScale;
+    const float canvasHeight = model->GetModel()->GetCanvasHeight() * retinaScale;
+    const float deviceWidth = width * retinaScale;
+    const float deviceHeight = height * retinaScale;
+    
+    // 计算正确的缩放比例，匹配C++实现
+    const float windowAspect = deviceWidth / deviceHeight;
+    // 4. 投影矩阵补偿屏幕宽高比（防止圆形变椭圆）
+    const float canvasAspect = canvasWidth / canvasHeight;
+    if (LAppDefine::DebugLogEnable)
+    {
+        LAppPal::PrintLogLn("[DEBUG] Window: %.1fx%.1f, Aspect: (%f); Canvas: %.1fx%.1f, Aspect: (%.1f), Position: (%.1f,%.1f)",
+                deviceWidth, deviceHeight, windowAspect, canvasWidth, canvasHeight, canvasAspect, _modelPositionX, _modelPositionY);
+    }
+    // 根据宽高比调整投影矩阵，保持模型比例
+    if (deviceWidth < deviceHeight)
+    {
+        if (canvasWidth < canvasHeight) {
+            const float scaleX = (1.0f / windowAspect) / canvasWidth * _modelScale;
+            const float scaleY = 2.0f / canvasHeight * _modelScale;
+            modelMatrix.Scale(scaleX, scaleY);
+            modelMatrix.Translate(scaleX*_modelPositionX, scaleY*_modelPositionY);
+        } else {
+            // Rice
+            const float scaleX = (1.0f / windowAspect) / canvasHeight * _modelScale;
+            const float scaleY = canvasAspect / canvasWidth * _modelScale;
+            if(canvasWidth == canvasHeight) {
+                modelMatrix.Scale(2.0f * scaleX, 2.0f * scaleY);
+                modelMatrix.Translate((1.0f / windowAspect) * _modelPositionX, _modelPositionY);
+            } else {
+                modelMatrix.Scale(scaleX, scaleY);
+                // 模型尺寸只需要水平方向平移就可以了，垂直方向需要x屏幕的比例
+                modelMatrix.Translate(_modelPositionX, windowAspect * _modelPositionY);
+            }
+        }
+    }
+    else
+    {
+        // 横屏模式
+        // 确保线框绘制的宽高比例正常
+        if (canvasWidth < canvasHeight) {
+            const float scaleX = (1.0f / windowAspect) / canvasWidth * _modelScale;
+            const float scaleY = 2.0f / canvasHeight * _modelScale;
+            modelMatrix.Scale(scaleX, scaleY);
+            modelMatrix.Translate((1.0f / windowAspect) * _modelPositionX, (1.0f / canvasWidth * _modelScale) * _modelPositionY);
+        } else {
+            // Rice
+            const float scaleX = (2.0f / windowAspect) / canvasHeight * _modelScale;
+            const float scaleY = (2.0f * canvasAspect) / canvasWidth * _modelScale;
+            modelMatrix.Scale(scaleX, scaleY);
+            modelMatrix.Translate((1.0f / windowAspect) * _modelPositionX, _modelPositionY);
+        }
+    }
+
+    // 检查当前矩阵
+    const float* matrix = modelMatrix.GetArray();
+
+    // 遍历所有可点击区域并绘制
+    for (Csm::csmInt32 i = 0; i < hitAreaCount; i++)
+    {
+        const Csm::csmChar *hitAreaName = model->GetModelSetting()->GetHitAreaName(i);
+        const Csm::CubismIdHandle drawID = model->GetModelSetting()->GetHitAreaId(i);
+
+        if (model->GetModel() && drawID)
+        {
+            const Csm::csmInt32 drawableIndex = model->GetModel()->GetDrawableIndex(drawID);
+            if (drawableIndex >= 0)
+            {
+                const Csm::csmInt32 vertexCount = model->GetModel()->GetDrawableVertexCount(drawableIndex);
+                const Csm::csmFloat32 *vertices = model->GetModel()->GetDrawableVertices(drawableIndex);
+
+                if (vertexCount >= 3 && vertices)
+                {
+                    // 记录边界框信息
+                    Csm::csmFloat32 minX = vertices[0];
+                    Csm::csmFloat32 maxX = vertices[0];
+                    Csm::csmFloat32 minY = vertices[1];
+                    Csm::csmFloat32 maxY = vertices[1];
+
+                    for (Csm::csmInt32 j = 1; j < vertexCount; j++)
+                    {
+                        Csm::csmFloat32 x = vertices[j * 2];
+                        Csm::csmFloat32 y = vertices[j * 2 + 1];
+
+                        minX = x < minX ? x : minX;
+                        maxX = x > maxX ? x : maxX;
+                        minY = y < minY ? y : minY;
+                        maxY = y > maxY ? y : maxY;
+                    }
+
+                    if (LAppDefine::DebugLogEnable)
+                    {
+                        LAppPal::PrintLogLn("[DEBUG] Clickable Area[%d]: %s [%.2f, %.2f, %.2f, %.2f] (Raw)",
+                                i, hitAreaName, minX, minY, maxX, maxY);
+                    }
+
+                    // 创建边界框顶点（矩形）
+                    // 一个 长度为 8 的 float 数组，用来存放一个 矩形边界框的 4 个顶点坐标
+                    float boundaryVertices[8] = {
+                        minX, minY,  // 左下角
+                        maxX, minY,  // 右下角
+                        maxX, maxY,  // 右上角
+                        minX, maxY   // 左上角
+                    };
+
+                    // 应用模型变换矩阵到边界框顶点，使用与模型渲染相同的变换
+                    for (int k = 0; k < 4; k++) {
+                        float x = boundaryVertices[k * 2]; // 原始 x
+                        float y = boundaryVertices[k * 2 + 1]; // 原始 y
+
+                        // 直接转换为NDC坐标（-1到1），不需要额外的屏幕坐标转换
+                        // 因为matrix已经包含了正确的变换
+                        // 只用了 matrix[0] 和 matrix[5]（缩放）+ matrix[12]、matrix[13]（平移）
+                        boundaryVertices[k * 2] = matrix[0] * x + matrix[12]; // 第 k 个顶点的 x
+                        boundaryVertices[k * 2 + 1] = matrix[5] * y + matrix[13]; // 第 k 个顶点的 y
+
+                        if (LAppDefine::DebugLogEnable) {
+                            LAppPal::PrintLogLn("[DEBUG] Transform[%d]: (%f, %f) -> (%f, %f)", k, x, y,
+                                boundaryVertices[k * 2], boundaryVertices[k * 2 + 1]);
+                        }
+                    }
+
+                    // 根据区域名称选择颜色（使用更亮的颜色）
+                    float r = 0.0f, g = 1.0f, b = 0.0f; // 默认绿色
+                    if (strcmp(hitAreaName, "Head") == 0) {
+                        r = 1.0f; g = 0.2f; b = 0.2f; // 头部亮红色
+                    } else if (strcmp(hitAreaName, "Body") == 0) {
+                        r = 0.2f; g = 0.2f; b = 1.0f; // 身体亮蓝色
+                    }
+
+                    // 通过 ViewController 绘制边界框线框
+                    if (LAppDefine::DebugLogEnable)
+                    {
+                        LAppPal::PrintLogLn("[DEBUG] Drawing boundary box for area: %s, bounds=[%.2f,%.2f,%.2f,%.2f]",
+                                hitAreaName, minX, minY, maxX, maxY);
+                    }
+
+                    [view drawClickableAreaWireframe:boundaryVertices
+                                           vertexCount:4
+                                           r:r g:g b:b
+                                           areaName:[NSString stringWithUTF8String:hitAreaName]];
+                }
+            }
+        }
+    }
 }
 
 @end

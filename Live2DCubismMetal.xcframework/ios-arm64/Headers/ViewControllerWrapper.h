@@ -17,5 +17,8 @@
 - (void)releaseWavHandler;
 - (void)updateLipSync:(float)mouth;
 - (void)updateLipSync;
+- (BOOL)hasClickableAreas;
+- (void)setShowClickableAreas:(BOOL)show;
+- (BOOL)isShowingClickableAreas;
 
 @end
