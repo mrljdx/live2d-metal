@@ -14,15 +14,16 @@
 #import "LAppModel.h"
 #import "LAppDefine.h"
 #import "LAppPal.h"
-#import "Live2DCallbackBridge.h"
 #import <Rendering/Metal/CubismRenderer_Metal.hpp>
 #import "Rendering/Metal/CubismRenderingInstanceSingleton_Metal.h"
+#import "Live2DCallbackBridge.h"
 
 @interface LAppLive2DManager()
 @property (nonatomic, assign) float modelScale;   // 模型缩放
 @property (nonatomic, assign) float modelPositionX;   // 模型X坐标
 @property (nonatomic, assign) float modelPositionY;   // 模型Y坐标
 @property (nonatomic, assign) float modelMouth;   // 模型口型
+@property (nonatomic, strong) NSMutableDictionary<NSString *, LAppSprite *> *wireSprites; // 专门画线框的精灵
 - (id)init;
 - (void)dealloc;
 @end
@@ -93,6 +94,9 @@ Csm::csmString GetPath(CFURLRef url)
         _modelPositionY = 0.0f; // 模型Y坐标
         _modelMouth = 0.0f; // 闭嘴状态，办张0.5f，张嘴1.0f
         _showClickableAreas = NO; // 默认不显示可点击区域，调试情况下设为YES
+        self.wireSprites = [NSMutableDictionary dictionary]; // 绘制精灵
+        self.wireframePassDesc = [[MTLRenderPassDescriptor alloc] init];
+
         _viewMatrix = new Csm::CubismMatrix44();
 
         _renderPassDescriptor = [[MTLRenderPassDescriptor alloc] init];
@@ -105,6 +109,8 @@ Csm::csmString GetPath(CFURLRef url)
         [self setUpModel];
 
         [self changeScene:_sceneIndex];
+
+        NSLog(@"[DEBUG] LAppLive2DManager init called");
     }
     return self;
 }
@@ -139,11 +145,9 @@ Csm::csmString GetPath(CFURLRef url)
     delete _viewMatrix;
     _viewMatrix = nil;
 
-    [_wireSprites removeAllObjects];
-    _wireSprites = nil;
-
     [self releaseAllModel];
     [super dealloc];
+    NSLog(@"[DEBUG] LAppLive2DManager dealloc called");
 }
 
 - (void)releaseAllModel
@@ -152,6 +156,7 @@ Csm::csmString GetPath(CFURLRef url)
     {
         delete _models[i];
     }
+    [self.wireSprites removeAllObjects];   // ARC 会自动 release
 
     _models.Clear();
 }
@@ -380,6 +385,7 @@ Csm::csmString GetPath(CFURLRef url)
                                                    MaxWidth:width MaxHeight:height Texture:_renderBuffer->GetColorBuffer()];
                 _modelSprite = [[LAppModelSprite alloc] initWithMyVar:width * 0.5f Y:height * 0.5f Width:width Height:height
                                                    MaxWidth:width MaxHeight:height Texture:_renderBuffer->GetColorBuffer()];
+
             }
         }
 
@@ -532,19 +538,10 @@ Csm::csmString GetPath(CFURLRef url)
         if (_showClickableAreas && [self hasClickableAreas])
         {
             // FIXME 不同于Android的渲染方式，iOS不能使用drawClickableAreas来渲染线框到Metal中，在LAppLive2DManager中使用 drawWireFrameForModel 进行处理
-            // [self drawClickableAreas:model];
-            // 创建新的渲染命令编码器用于线框绘制
-            MTLRenderPassDescriptor *wireframeRenderPass = [[[MTLRenderPassDescriptor alloc] init] autorelease];
-            wireframeRenderPass.colorAttachments[0].texture = drawable.texture;
-            wireframeRenderPass.colorAttachments[0].loadAction = MTLLoadActionLoad;
-            wireframeRenderPass.colorAttachments[0].storeAction = MTLStoreActionStore;
-            wireframeRenderPass.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1);
-            id<MTLRenderCommandEncoder> wireframeEncoder = [commandBuffer renderCommandEncoderWithDescriptor:wireframeRenderPass];
+            //[self drawClickableAreas:model];
 
-            // 使用改进的wireframe绘制方法
-            [self drawWireFrameForModel:model currentDrawable:drawable renderEncoder:wireframeEncoder];
-
-            [wireframeEncoder endEncoding];
+            // 创建新的渲染命令编码器用于线框绘制 device, commandBuffer, _renderPassDescriptor
+            [self drawWireFrameForModel:model device:device commandBuffer:commandBuffer currentDrawable:drawable];
         }
     }
 }
@@ -578,6 +575,7 @@ Csm::csmString GetPath(CFURLRef url)
     _models.PushBack(new LAppModel());
     _models[0]->LoadAssets(modelPath.GetRawString(), modelJsonName.GetRawString());
 
+    [self setupWireframesForModel:_models[0]];
     /*
      * モデル半透明表示を行うサンプルを提示する。
      * ここでUSE_RENDER_TARGET、USE_MODEL_RENDER_TARGETが定義されている場合
@@ -699,16 +697,39 @@ Csm::csmString GetPath(CFURLRef url)
     return _showClickableAreas;
 }
 
-- (void) drawWireFrameForModel:(LAppModel*)model currentDrawable:(id<CAMetalDrawable>)drawable renderEncoder:(id<MTLRenderCommandEncoder>)renderEncoder
+- (void)setupWireframesForModel:(LAppModel *)model
 {
-    if (!model || !model->GetModelSetting() || !renderEncoder)
+    [self.wireSprites removeAllObjects];          // 先清空旧的
+    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
+    ViewController* view = [delegate viewController];
+
+    const CGFloat retinaScale = [[UIScreen mainScreen] scale];
+    const float width = view.view.frame.size.width;
+    const float height = view.view.frame.size.height;
+
+    CubismRenderingInstanceSingleton_Metal *single = [CubismRenderingInstanceSingleton_Metal sharedManager];
+    id<MTLDevice> device = [single getMTLDevice];
+
+    const Csm::csmInt32 cnt = model->GetModelSetting()->GetHitAreasCount();
+    for (Csm::csmInt32 i = 0; i < cnt; ++i) {
+        const char *name = model->GetModelSetting()->GetHitAreaName(i);
+        LAppSprite *sp = [[LAppSprite alloc] initWithMyVar:width * 0.5f Y:height * 0.5f Width:width Height:height
+                                                  MaxWidth:width MaxHeight:height Texture:nil];
+        [sp SetMTLFunction:device];
+        [self.wireSprites setObject:sp forKey:@(name)];
+    }
+}
+
+- (void) drawWireFrameForModel:(LAppModel*)model
+                        device:(id<MTLDevice>)device
+                 commandBuffer:(id <MTLCommandBuffer>)commandBuffer
+               currentDrawable:(id<CAMetalDrawable>)drawable
+{
+    if (!model || !commandBuffer || !drawable)
     {
+        NSLog(@"[ERROR] drawWireFrameForModel model:%p; commandBuffer:%@; drawable:%@;", model, commandBuffer, drawable);
         return;
     }
-
-    const Csm::csmInt32 hitAreaCount = model->GetModelSetting()->GetHitAreasCount();
-    if (hitAreaCount <= 0) return;
-
     // 获取设备信息和尺寸
 //    CubismRenderingInstanceSingleton_Metal *single = [CubismRenderingInstanceSingleton_Metal sharedManager];
 //    id<MTLDevice> device = [single getMTLDevice];
@@ -734,14 +755,16 @@ Csm::csmString GetPath(CFURLRef url)
     const float canvasWidth = model->GetModel()->GetCanvasWidth();
     const float canvasHeight = model->GetModel()->GetCanvasHeight();
 
+    if (width <= 0 || height <= 0 || canvasWidth <= 0 || canvasHeight <= 0) return;
+
     const float windowAspect = width / height;
     const float canvasAspect = canvasWidth / canvasHeight;
 
-    if (LAppDefine::DebugLogEnable)
-    {
-        LAppPal::PrintLogLn("[DEBUG] Window: %.1fx%.1f, Aspect: (%f); Canvas: %.1fx%.1f, Aspect: (%.1f), Position: (%.1f,%.1f)",
-                width, height, windowAspect, canvasWidth, canvasHeight, canvasAspect, _modelPositionX, _modelPositionY);
-    }
+//    if (LAppDefine::DebugLogEnable)
+//    {
+//        LAppPal::PrintLogLn("[DEBUG] Window: %.1fx%.1f, Aspect: (%f); Canvas: %.1fx%.1f, Aspect: (%.1f), Position: (%.1f,%.1f)",
+//                width, height, windowAspect, canvasWidth, canvasHeight, canvasAspect, _modelPositionX, _modelPositionY);
+//    }
 
     // 根据宽高比调整投影矩阵，保持模型比例
     if (width < height)
@@ -774,29 +797,42 @@ Csm::csmString GetPath(CFURLRef url)
             const float scaleY = 2.0f / canvasHeight * _modelScale;
             modelMatrix.Scale(scaleX, scaleY);
             modelMatrix.Translate((1.0f / windowAspect) * _modelPositionX, (1.0f / canvasWidth * _modelScale) * _modelPositionY);
-            if (LAppDefine::DebugLogEnable) {
-                LAppPal::PrintLogLn("[DEBUG] Horizonal[0] Canvas Draw And Translate scaleX: [%.1f] scaleY: [%.1f]", scaleX, scaleY);
-            }
+//            if (LAppDefine::DebugLogEnable) {
+//                LAppPal::PrintLogLn("[DEBUG] Horizonal[0] Canvas Draw And Translate scaleX: [%.1f] scaleY: [%.1f]", scaleX, scaleY);
+//            }
         } else {
             // Rice
             const float scaleX = (2.0f / windowAspect) / canvasHeight * _modelScale;
             const float scaleY = (2.0f * canvasAspect) / canvasWidth * _modelScale;
             modelMatrix.Scale(scaleX, scaleY);
             modelMatrix.Translate((1.0f / windowAspect) * _modelPositionX, _modelPositionY);
-            if (LAppDefine::DebugLogEnable) {
-                LAppPal::PrintLogLn("[DEBUG] Horizonal[1] Canvas Draw And Translate scaleX: [%.1f] scaleY: [%.1f]", scaleX, scaleY);
-            }
+//            if (LAppDefine::DebugLogEnable) {
+//                LAppPal::PrintLogLn("[DEBUG] Horizonal[1] Canvas Draw And Translate scaleX: [%.1f] scaleY: [%.1f]", scaleX, scaleY);
+//            }
         }
     }
 
     // 检查当前矩阵
     const float* matrix = modelMatrix.GetArray();
+    // 可点击区域
+    const Csm::csmInt32 hitAreaCount = model->GetModelSetting()->GetHitAreasCount();
+    // 渲染器共用
+    // 每次都需要开辟一个新的 renderPassDescriptor 比较占用内存, 所以复用一个
+    MTLRenderPassDescriptor *renderPassDescriptor = self.wireframePassDesc;
+    renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
+    renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionLoad;
+    renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
+//    renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1);
+    id<MTLRenderCommandEncoder> wireframeEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
+//    Csm::Rendering::CubismOffscreenSurface_Metal& useTarget = model->GetRenderBuffer();
 
     // 遍历所有可点击区域并绘制线框
     for (Csm::csmInt32 i = 0; i < hitAreaCount; i++)
     {
-        const Csm::csmChar *hitAreaName = model->GetModelSetting()->GetHitAreaName(i);
+        const char *hitAreaName = model->GetModelSetting()->GetHitAreaName(i);
         const Csm::CubismIdHandle drawID = model->GetModelSetting()->GetHitAreaId(i);
+        LAppSprite *wireframeSprite = [self.wireSprites objectForKey:@(hitAreaName)];
+        if (!wireframeSprite) continue;
 
         if (model->GetModel() && drawID)
         {
@@ -845,12 +881,12 @@ Csm::csmString GetPath(CFURLRef url)
                         // 因为matrix已经包含了正确的变换
                         // 只用了 matrix[0] 和 matrix[5]（缩放）+ matrix[12]、matrix[13]（平移）
                         boundaryVertices[k * 2] = ndcX; // 第 k 个顶点的 x
-                        boundaryVertices[k * 2 + 1] = -ndcY; // 第 k 个顶点的 y， 关键：直接取反，否则会导致整个线框绘制倒置180度
+                        boundaryVertices[k * 2 + 1] = ndcY; // 第 k 个顶点的 y， 关键：如果是绘制线MTLPrimitiveTypeLineStrip，则需要取反-ndcY，否则会导致整个线框绘制倒置180度
 
-                        if (LAppDefine::DebugLogEnable) {
-                            LAppPal::PrintLogLn("[DEBUG] Transform[%d]: (%f, %f) -> (%f, %f)", k, x, y,
-                                boundaryVertices[k * 2], boundaryVertices[k * 2 + 1]);
-                        }
+//                        if (LAppDefine::DebugLogEnable) {
+//                            LAppPal::PrintLogLn("[DEBUG] Transform[%d]: (%f, %f) -> (%f, %f)", k, x, y,
+//                                boundaryVertices[k * 2], boundaryVertices[k * 2 + 1]);
+//                        }
                     }
 
                     // 根据区域名称选择颜色（使用更亮的颜色）
@@ -860,13 +896,14 @@ Csm::csmString GetPath(CFURLRef url)
                     } else if (strcmp(hitAreaName, "Body") == 0) {
                         colorR = 0.2f; colorG = 0.2f; colorB = 1.0f; // 身体亮蓝色
                     }
-
+                    float lineWidth = 4.0f / fminf(width, height);
+//                    float lineWidth = 10.0f;
                     // 通过 ViewController 绘制边界框线框
-                    if (LAppDefine::DebugLogEnable)
-                    {
-                        LAppPal::PrintLogLn("[DEBUG] Drawing boundary box for area: %s, bounds=[%.2f,%.2f,%.2f,%.2f]",
-                                hitAreaName, minX, minY, maxX, maxY);
-                    }
+//                    if (LAppDefine::DebugLogEnable)
+//                    {
+//                        LAppPal::PrintLogLn("[DEBUG] Drawing boundary box for area: %s, bounds=[%.2f,%.2f,%.2f,%.2f], lineWidth=%f",
+//                                hitAreaName, minX, minY, maxX, maxY, lineWidth);
+//                    }
                     // 计算边界框中心（NDC 坐标）
                     float centerX = (boundaryVertices[0] + boundaryVertices[2] + boundaryVertices[4] + boundaryVertices[6]) / 4.0f;
                     float centerY = (boundaryVertices[1] + boundaryVertices[3] + boundaryVertices[5] + boundaryVertices[7]) / 4.0f;
@@ -878,29 +915,25 @@ Csm::csmString GetPath(CFURLRef url)
                     // 计算边界框在屏幕上的实际宽高（用于 LAppSprite 的 Width/Height）
                     float boxWidth = (maxX - minX) * matrix[0] * 0.5f * width;
                     float boxHeight = (maxY - minY) * matrix[5] * 0.5f * height;
-                    if (LAppDefine::DebugLogEnable)
+
+                    if (!wireframeSprite.pipelineState && device)
                     {
-                        LAppPal::PrintLogLn("[DEBUG] Drawing wireframeSprite: %s, centerX=%.2f, centerY=%.2f, Width= %.2f,Height=%.2f,MaxWidth=%.2f, MaxHeight=%.2f",
-                                hitAreaName, screenX, screenY, boxWidth, boxHeight, width, height);
-
+                        [wireframeSprite SetMTLFunction:device];
+                        NSLog(@"[DEBUG] SetMTLFunction for pipelineState");
                     }
-
-                    LAppSprite *wireframeSprite = _wireSprites[[NSString stringWithUTF8String:hitAreaName]];
-                    if (!wireframeSprite) {
-                        wireframeSprite = [[LAppSprite alloc] initWithMyVar:screenX Y:screenY Width:boxWidth Height:boxHeight
-                                                                   MaxWidth:width MaxHeight:height Texture:nil];
-                    }
+                    [wireframeSprite resizeImmidiate:screenX Y:screenY Width:boxWidth Height:boxHeight
+                                            MaxWidth:width MaxHeight:height];
                     // 使用LAppSprite直接绘制线框 - 准备顶点数据
                     [wireframeSprite renderWireframe:boundaryVertices count:4
-                                           r:colorR g:colorG b:colorB a:0.9f];
+                                                   r:colorR g:colorG b:colorB a:0.9f lineWidth:lineWidth];
                     // 使用提供的renderEncoder进行立即绘制
-                    [wireframeSprite renderImmidiate:renderEncoder];
+                    [wireframeSprite renderImmidiate:wireframeEncoder];
                 }
             }
         }
     }
-    
-    // ARC handles memory management automatically
+    // 注意：同一个 renderEncoder 只能 endEncoding 一次
+    [wireframeEncoder endEncoding];
 }
 
 /**
@@ -937,11 +970,12 @@ Csm::csmString GetPath(CFURLRef url)
     const float windowAspect = deviceWidth / deviceHeight;
     // 4. 投影矩阵补偿屏幕宽高比（防止圆形变椭圆）
     const float canvasAspect = canvasWidth / canvasHeight;
-    if (LAppDefine::DebugLogEnable)
-    {
-        LAppPal::PrintLogLn("[DEBUG] Window: %.1fx%.1f, Aspect: (%f); Canvas: %.1fx%.1f, Aspect: (%.1f), Position: (%.1f,%.1f)",
-                deviceWidth, deviceHeight, windowAspect, canvasWidth, canvasHeight, canvasAspect, _modelPositionX, _modelPositionY);
-    }
+
+//    if (LAppDefine::DebugLogEnable)
+//    {
+//        LAppPal::PrintLogLn("[DEBUG] Window: %.1fx%.1f, Aspect: (%f); Canvas: %.1fx%.1f, Aspect: (%.1f), Position: (%.1f,%.1f)",
+//                deviceWidth, deviceHeight, windowAspect, canvasWidth, canvasHeight, canvasAspect, _modelPositionX, _modelPositionY);
+//    }
     // 根据宽高比调整投影矩阵，保持模型比例
     if (deviceWidth < deviceHeight)
     {
@@ -949,7 +983,7 @@ Csm::csmString GetPath(CFURLRef url)
             const float scaleX = (1.0f / windowAspect) / canvasWidth * _modelScale;
             const float scaleY = 2.0f / canvasHeight * _modelScale;
             modelMatrix.Scale(scaleX, scaleY);
-            modelMatrix.Translate(scaleX*_modelPositionX, scaleY*_modelPositionY);
+            modelMatrix.Translate(scaleX * _modelPositionX, scaleY * _modelPositionY);
         } else {
             // Rice
             const float scaleX = (1.0f / windowAspect) / canvasHeight * _modelScale;

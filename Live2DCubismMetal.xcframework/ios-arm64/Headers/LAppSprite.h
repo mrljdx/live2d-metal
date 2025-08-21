@@ -17,8 +17,6 @@
 @property (nonatomic) float spriteColorB;
 @property (nonatomic) float spriteColorA;
 @property (strong, nonatomic) id <MTLRenderPipelineState> pipelineState;
-@property (nonatomic) int wireVertexCount;
-@property (nonatomic) id<MTLRenderPipelineState> wireframePipeline;
 @property (nonatomic) int wireframeVertexCount;
 /**
  * @brief Rect 構造体。
@@ -86,6 +84,12 @@ typedef struct
 - (void)SetColor:(float)r g:(float)g b:(float)b a:(float)a;
 
 /**
+ * @brief 用于处理外部渲染时pipelineStatus为空的情况
+ * @param device
+ */
+- (void)SetMTLFunction:(id <MTLDevice>)device;
+
+/**
  * @brief MTLRenderPipelineDescriptor設定
  */
 - (void)SetMTLRenderPipelineDescriptor:(id <MTLDevice>)device vertexProgram:(id <MTLFunction>)vertexProgram fragmentProgram:(id <MTLFunction>)fragmentProgram;
@@ -99,7 +103,8 @@ typedef struct
  * @brief 绘制线框
  */
 - (void)renderWireframe:(const float*)vertices count:(int)vertexCount
-                           r:(float)r g:(float)g b:(float)b a:(float)a;
+                           r:(float)r g:(float)g b:(float)b a:(float)a
+                   lineWidth:(float)lineWidth;
 
 @end
 

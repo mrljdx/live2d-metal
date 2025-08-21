@@ -3,7 +3,6 @@
 
 @interface ViewControllerWrapper ()
 @property (nonatomic, strong) id internalViewController;
-@property (nonatomic, assign) CGRect lastBounds;
 @end
 
 @implementation ViewControllerWrapper
@@ -62,19 +61,44 @@
     return deviceY;
 }
 
+- (float)transformScreenX:(float)deviceX {
+    if ([_internalViewController respondsToSelector:@selector(transformScreenX:)]) {
+        return [_internalViewController transformScreenX:deviceX];
+    }
+    NSLog(@"[Live2D] Warning: transformScreenX method not available, returning original value");
+    return deviceX;
+}
+
+- (float)transformScreenY:(float)deviceY {
+    if ([_internalViewController respondsToSelector:@selector(transformScreenY:)]) {
+        return [_internalViewController transformScreenY:deviceY];
+    }
+    NSLog(@"[Live2D] Warning: transformScreenY method not available, returning original value");
+    return deviceY;
+}
+
+- (float)transformTapY:(float)deviceY
+{
+    if ([_internalViewController respondsToSelector:@selector(transformTapY:)]) {
+        return [_internalViewController transformTapY:deviceY];
+    }
+    NSLog(@"[Live2D] Warning: transformTapY method not available, returning original value");
+    return deviceY;
+}
+
+- (void)drawableResize:(CGSize)size
+{
+    if ([_internalViewController respondsToSelector:@selector(drawableResize:)]) {
+        return [_internalViewController drawableResize:size];
+    }
+    NSLog(@"[Live2D] Warning: drawableResize method not available, returning original value");
+}
+
 - (void)switchToNextModel {
     if ([_internalViewController respondsToSelector:@selector(switchToNextModel)]) {
         [_internalViewController switchToNextModel];
     } else {
         NSLog(@"[Live2D] Warning: switchToNextModel method not available, fallback to call LAppLive2DManager");
-        // Fallback: directly call LAppLive2DManager
-        Class LAppLive2DManagerClass = NSClassFromString(@"LAppLive2DManager");
-        if (LAppLive2DManagerClass && [LAppLive2DManagerClass respondsToSelector:@selector(getInstance)]) {
-            id manager = [LAppLive2DManagerClass performSelector:@selector(getInstance)];
-            if ([manager respondsToSelector:@selector(nextScene)]) {
-                [manager performSelector:@selector(nextScene)];
-            }
-        }
     }
 }
 
@@ -83,29 +107,6 @@
         [_internalViewController switchToPreviousModel];
     } else {
         NSLog(@"[Live2D] Warning: switchToPreviousModel method not available, fallback to call LAppLive2DManager");
-        // Fallback: directly call LAppLive2DManager with index calculation
-        Class LAppLive2DManagerClass = NSClassFromString(@"LAppLive2DManager");
-        if (LAppLive2DManagerClass && [LAppLive2DManagerClass respondsToSelector:@selector(getInstance)]) {
-            id manager = [LAppLive2DManagerClass performSelector:@selector(getInstance)];
-            
-            // Get current index and model count to calculate previous
-            if ([manager respondsToSelector:@selector(changeScene:)]) {
-                NSMethodSignature *countSignature = [manager methodSignatureForSelector:@selector(GetModelNum)];
-                if (countSignature) {
-                    NSInvocation *countInvocation = [NSInvocation invocationWithMethodSignature:countSignature];
-                    [countInvocation setTarget:manager];
-                    [countInvocation setSelector:@selector(GetModelNum)];
-                    [countInvocation invoke];
-                    
-                    unsigned int modelCount;
-                    [countInvocation getReturnValue:&modelCount];
-                    
-                    // For previous model, we'll use a simplified approach since we can't easily get current index
-                    // This will require exposing the sceneIndex or implementing the logic differently
-                    [manager performSelector:@selector(nextScene)]; // Temporary fallback
-                }
-            }
-        }
     }
 }
 
@@ -114,21 +115,6 @@
         [_internalViewController switchToModel:index];
     } else {
         NSLog(@"[Live2D] Warning: switchToModel method not available, fallback to call LAppLive2DManager");
-        // Fallback: directly call LAppLive2DManager
-        Class LAppLive2DManagerClass = NSClassFromString(@"LAppLive2DManager");
-        if (LAppLive2DManagerClass && [LAppLive2DManagerClass respondsToSelector:@selector(getInstance)]) {
-            id manager = [LAppLive2DManagerClass performSelector:@selector(getInstance)];
-            if ([manager respondsToSelector:@selector(changeScene:)]) {
-                NSMethodSignature *signature = [manager methodSignatureForSelector:@selector(changeScene:)];
-                if (signature) {
-                    NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
-                    [invocation setTarget:manager];
-                    [invocation setSelector:@selector(changeScene:)];
-                    [invocation setArgument:&index atIndex:2];
-                    [invocation invoke];
-                }
-            }
-        }
     }
 }
 
@@ -150,93 +136,21 @@
         // 确保内部视图也透明
         vc.view.backgroundColor = [UIColor clearColor];
         vc.view.opaque = NO;
+        NSLog(@"[Live2D] Debug: viewDidLoad addSubview for ViewController");
     }
-    
-    // 添加屏幕旋转通知监听
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(orientationChanged:)
-                                                 name:UIDeviceOrientationDidChangeNotification
-                                               object:nil];
-    
-    // 确保设备方向通知已启用
-    [[UIDevice currentDevice] beginGeneratingDeviceOrientationNotifications];
-}
-
-// 加到 ViewControllerWrapper.m 里
-- (void)viewDidLayoutSubviews {
-    [super viewDidLayoutSubviews];
-
-    // 如果 bounds 没变化就不重复调用
-    if (CGRectEqualToRect(self.view.bounds, self.lastBounds)) { return; }
-    self.lastBounds = self.view.bounds;
-
-    if (_internalViewController && [_internalViewController isKindOfClass:[UIViewController class]]) {
-        UIViewController *vc = (UIViewController *)_internalViewController;
-
-        // 1. 让内部 view 跟随父视图大小
-        vc.view.frame = self.view.bounds;
-
-        // 2. 通知内部重新计算 Live2D 画布
-        [self resizeScreen];
-
-        NSLog(@"[Live2D] ViewControllerWrapper: layout updated, new bounds %@", NSStringFromCGRect(self.view.bounds));
-    }
-}
-
-- (void)orientationChanged:(NSNotification *)notification {
-    // 延迟执行以确保布局已经完成更新
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [self handleRotation];
-    });
-}
-
-- (void)handleRotation {
-    if (CGRectEqualToRect(self.view.bounds, self.lastBounds)) {
-        NSLog(@"[Live2D] ViewControllerWrapper: rotation skipped (duplicate)");
-        return;
-    }
-    // 强制重新计算屏幕尺寸
-    if (_internalViewController && [_internalViewController isKindOfClass:[UIViewController class]]) {
-        UIViewController *vc = (UIViewController *)_internalViewController;
-
-        // 更新视图框架
-        vc.view.frame = self.view.bounds;
-
-        // 调用内部控制器的resize方法来重新计算模型尺寸
-        [self resizeScreen];
-
-        NSLog(@"[Live2D] ViewControllerWrapper: Screen rotated, new bounds: %@", NSStringFromCGRect(self.view.bounds));
-    }
-}
-
-- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
-    [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
-
-    // 在旋转动画完成后重新计算
-    [coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext> context) {
-        // 动画过程中的更新
-    } completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
-        // 旋转完成后重新计算
-        [self handleRotation];
-    }];
 }
 
 - (void)dealloc {
-    // 移除通知监听
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
-    [[UIDevice currentDevice] endGeneratingDeviceOrientationNotifications];
-    
     // 清理资源
     [self releaseView];
 
     if (_internalViewController && [_internalViewController isKindOfClass:[UIViewController class]]) {
-        UIViewController *vc = (UIViewController *)_internalViewController;
-        [vc willMoveToParentViewController:nil];
-        [vc.view removeFromSuperview];
-        [vc removeFromParentViewController];
+        [_internalViewController dealloc];
     }
 
     _internalViewController = nil;
+
+    NSLog(@"[Live2D] Debug: dealloc is called");
 }
 
 - (void)setModelScale:(float)scale

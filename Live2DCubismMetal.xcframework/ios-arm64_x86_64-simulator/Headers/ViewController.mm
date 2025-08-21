@@ -43,7 +43,7 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 @property (nonatomic) Csm::CubismMatrix44 *deviceToScreen;///< デバイスからスクリーンへの行列
 @property (nonatomic) Csm::CubismViewMatrix *viewMatrix;
 @property (nonatomic, assign) CGRect lastBounds;
-//@property (nonatomic) LAppSprite *testWireSprite; // 测试线框
+
 @end
 
 @implementation ViewController
@@ -243,29 +243,6 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 
     NSLog(@"[Live2D] ViewController: initializeSprite - width:%f  height:%f", width, height);
 
-    CubismRenderingInstanceSingleton_Metal *single =
-            [CubismRenderingInstanceSingleton_Metal sharedManager];
-    id<MTLDevice> device = [single getMTLDevice];
-    if (!_renderSprite) {
-        NSLog(@"[Live2D] ViewController: init renderSprite");
-        _renderSprite = [[LAppModelSprite alloc]
-                initWithMyVar:0 Y:0
-                        Width:width
-                       Height:height
-                     MaxWidth:width
-                    MaxHeight:height
-                      Texture:nil];   // 线框不需要贴图
-    }
-
-//    float testVertices[8] = {
-//            -0.3f, -0.3f,  // 左下
-//            0.3f, -0.3f,  // 右下
-//            0.3f,  0.3f,  // 右上
-//            -0.3f,  0.3f   // 左上
-//    };
-//    _testWireSprite = [[LAppSprite alloc] initWithMyVar:width*0.5f Y:height*0.5f Width:width*0.5f Height:height*0.5f MaxWidth:width MaxHeight:height Texture:nil]; // 无纹理，用于线框绘制
-//    [_testWireSprite renderWireframe:testVertices count:4 r:1.0f g:0.0f b:0.0f a:0.9f];
-
 //    LAppTextureManager* textureManager = [delegate getTextureManager];
 //    const string resourcesPath = ResourcesPath;
 
@@ -432,10 +409,12 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 }
 
 
-- (void)renderImageSprite:(id<MTLRenderCommandEncoder>)renderEncoder
+- (void)renderSprite:(id<MTLRenderCommandEncoder>)renderEncoder
 {
     // [_back renderImmidiate:renderEncoder];
+
     // [_gear renderImmidiate:renderEncoder];
+
     // [_power renderImmidiate:renderEncoder];
 }
 
@@ -455,7 +434,7 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
     id<MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
 
     //モデル以外の描画
-    [self renderImageSprite:renderEncoder];
+    [self renderSprite:renderEncoder];
 
     [renderEncoder endEncoding];
 
@@ -463,24 +442,8 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
     [Live2DManager SetViewMatrix:_viewMatrix];
     [Live2DManager onUpdate:commandBuffer currentDrawable:currentDrawable depthTexture:_depthTexture];
 
-    /** 调试用，勿删
-    //增加上层绘制的窗口
-    MTLRenderPassDescriptor *topRenderPassDescriptor = [[[MTLRenderPassDescriptor alloc] init] autorelease];
-    topRenderPassDescriptor.colorAttachments[0].texture = currentDrawable.texture;
-    topRenderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionLoad; // 保持已经绘制的内容
-    // topRenderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear; // 清理已经绘制的内容
-    topRenderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
-    renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0.5f);
-
-    id<MTLRenderCommandEncoder> topRenderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:topRenderPassDescriptor];
-
-    [_testWireSprite renderImmidiate:topRenderEncoder];
-
-    [topRenderEncoder endEncoding];
-    **/
     [commandBuffer presentDrawable:currentDrawable];
     [commandBuffer commit];
-
 }
 
 - (void)dealloc
@@ -609,7 +572,8 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 
     // 2. 把顶点直接塞进 sprite 的缓存里
     [_renderSprite renderWireframe:vertices count:vertexCount
-                                    r:r g:g b:b a:0.9f];
+                                    r:r g:g b:b a:0.9f
+                         lineWidth: 3.0f];
 
     LAppPal::PrintLogLn("[DEBUG] ViewController::drawClickableAreaWireframe completed for: %s", [areaName UTF8String]);
     

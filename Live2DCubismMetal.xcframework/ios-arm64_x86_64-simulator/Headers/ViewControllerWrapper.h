@@ -3,9 +3,13 @@
 @interface ViewControllerWrapper : UIViewController
 
 - (instancetype)init;
-- (void)initializeSprite;
 - (void)releaseView;
 - (void)resizeScreen;
+- (void)initializeSprite;
+- (float)transformViewX:(float)deviceX;
+- (float)transformViewY:(float)deviceY;
+- (float)transformScreenX:(float)deviceX;
+- (float)transformScreenY:(float)deviceY;
 - (void)switchToNextModel;
 - (void)switchToPreviousModel;
 - (void)switchToModel:(int)index;

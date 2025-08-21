@@ -32,18 +32,17 @@ fragment float4 fragmentShader(ColorInOut       in      [[ stage_in ]],
     return color;
 }
 
-// ---------- 线框专用 ----------
-struct WireInOut {
-    float4 position [[position]];
-};
-
-vertex WireInOut wireVS(constant float4 *pos [[buffer(0)]],
-                        uint vid [[vertex_id]]) {
-    WireInOut out;
-    out.position = pos[vid];
+vertex ColorInOut wireVertexShader(constant float4 *positions [[ buffer(0) ]],
+                                        uint    vid       [[ vertex_id ]])
+{
+    ColorInOut out;
+    out.position = positions[vid];
     return out;
 }
 
-fragment float4 wireFS(constant float4 &color [[buffer(2)]]) {
-    return color;   // 不采样纹理，直接返回传入颜色
+fragment float4 wireFragmentShader(ColorInOut       in      [[ stage_in ]],
+                               constant BaseColor &uniform [[ buffer(2) ]])
+{
+    float4 color = uniform.color;
+    return color;
 }

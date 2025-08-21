@@ -32,13 +32,13 @@ typedef NS_ENUM(NSUInteger, SelectTarget)
 @property (nonatomic) LAppSprite* sprite;
 @property (nonatomic) LAppModelSprite* modelSprite;
 @property (nonatomic) MTLRenderPassDescriptor* renderPassDescriptor;
+@property (nonatomic) MTLRenderPassDescriptor* wireframePassDesc; // 线框的渲染管线
 @property (nonatomic) float clearColorR;
 @property (nonatomic) float clearColorG;
 @property (nonatomic) float clearColorB;
 
 @property (nonatomic) Csm::csmVector<Csm::csmString> modelDir; ///< モデルディレクトリ名のコンテナ
 @property (nonatomic) BOOL showClickableAreas; ///< 是否显示可点击区域
-@property (nonatomic, strong) NSMutableDictionary<NSString *, LAppSprite *> *wireSprites; // 专门画线框
 
 /**
  * @brief クラスのインスタンスを返す。
@@ -169,6 +169,8 @@ typedef NS_ENUM(NSUInteger, SelectTarget)
  * @param model
  */
 - (void) drawClickableAreas:(LAppModel*)model;
+
+- (void)setupWireframesForModel:(LAppModel *)model;
 
 @end
 
