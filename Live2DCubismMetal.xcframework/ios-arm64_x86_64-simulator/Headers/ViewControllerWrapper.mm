@@ -145,12 +145,16 @@
     [self releaseView];
 
     if (_internalViewController && [_internalViewController isKindOfClass:[UIViewController class]]) {
-        [_internalViewController dealloc];
+        UIViewController *vc = (UIViewController *)_internalViewController;
+        [vc willMoveToParentViewController:nil];
+        [vc.view removeFromSuperview];
+        [vc removeFromParentViewController];
     }
 
     _internalViewController = nil;
 
     NSLog(@"[Live2D] Debug: dealloc is called");
+
 }
 
 - (void)setModelScale:(float)scale
