@@ -397,6 +397,13 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 
 - (void)drawableResize:(CGSize)size
 {
+    if (_depthTexture)
+    {
+        [_depthTexture release];
+        _depthTexture = nil;
+        LAppPal::PrintLogLn("[APP]drawableResize _depthTexture release");
+    }
+
     MTLTextureDescriptor* depthTextureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float width:size.width height:size.height mipmapped:false];
     depthTextureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
     depthTextureDescriptor.storageMode = MTLStorageModePrivate;
