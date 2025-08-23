@@ -35,6 +35,25 @@
     } else {
         NSLog(@"[Live2D] Warning: releaseView method not available");
     }
+    // 清理Live2DManager的实例
+//    Class LAppLive2DManagerClass = NSClassFromString(@"LAppLive2DManager");
+//    if (LAppLive2DManagerClass && [LAppLive2DManagerClass respondsToSelector:@selector(releaseInstance)]) {
+//        [LAppLive2DManagerClass performSelector:@selector(releaseInstance)];
+//    } else {
+//        NSLog(@"[Live2D] Warning: LAppLive2DManager releaseInstance method not available");
+//    }
+    // 清理Live2D的所有资源
+//    Class AppDelegateClass = NSClassFromString(@"AppDelegate");
+//    if (AppDelegateClass) {
+//        id appDelegate = [[UIApplication sharedApplication] delegate];
+//        if ([appDelegate respondsToSelector:@selector(finishApplication)]) {
+//            [appDelegate performSelector:@selector(finishApplication)];
+//        } else {
+//            NSLog(@"[Live2D] Warning: AppDelegate finishApplication not available");
+//        }
+//    } else {
+//        NSLog(@"[Live2D] Warning: AppDelegate class not available");
+//    }
 }
 
 - (void)resizeScreen {
@@ -98,7 +117,7 @@
     if ([_internalViewController respondsToSelector:@selector(switchToNextModel)]) {
         [_internalViewController switchToNextModel];
     } else {
-        NSLog(@"[Live2D] Warning: switchToNextModel method not available, fallback to call LAppLive2DManager");
+        NSLog(@"[Live2D] Warning: switchToNextModel method not available");
     }
 }
 
@@ -106,7 +125,7 @@
     if ([_internalViewController respondsToSelector:@selector(switchToPreviousModel)]) {
         [_internalViewController switchToPreviousModel];
     } else {
-        NSLog(@"[Live2D] Warning: switchToPreviousModel method not available, fallback to call LAppLive2DManager");
+        NSLog(@"[Live2D] Warning: switchToPreviousModel method not available");
     }
 }
 
@@ -114,7 +133,7 @@
     if ([_internalViewController respondsToSelector:@selector(switchToModel:)]) {
         [_internalViewController switchToModel:index];
     } else {
-        NSLog(@"[Live2D] Warning: switchToModel method not available, fallback to call LAppLive2DManager");
+        NSLog(@"[Live2D] Warning: switchToModel method not available");
     }
 }
 
@@ -141,20 +160,22 @@
 }
 
 - (void)dealloc {
-    // 清理资源
-    [self releaseView];
+    // 先清理View
+    // [self releaseView];
 
+    // 再清理资源
     if (_internalViewController && [_internalViewController isKindOfClass:[UIViewController class]]) {
         UIViewController *vc = (UIViewController *)_internalViewController;
         [vc willMoveToParentViewController:nil];
         [vc.view removeFromSuperview];
         [vc removeFromParentViewController];
     }
-
     _internalViewController = nil;
 
-    NSLog(@"[Live2D] Debug: dealloc is called");
+    // 清理现有代码
+    [super dealloc];
 
+    NSLog(@"[Live2D] Debug: ViewControllerWrapper dealloc is called");
 }
 
 - (void)setModelScale:(float)scale

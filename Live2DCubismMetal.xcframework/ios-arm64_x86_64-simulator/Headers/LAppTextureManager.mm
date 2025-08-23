@@ -19,6 +19,7 @@
 #pragma clang diagnostic pop
 #import "LAppPal.h"
 #import "AppDelegate.h"
+#import "L2DCubism.h"
 #import "ViewController.h"
 #import "MetalUIView.h"
 #import "Rendering/Metal/CubismRenderingInstanceSingleton_Metal.h"
@@ -118,7 +119,8 @@
                   withBytes:png
                 bytesPerRow:bytesPerRow];
 
-    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
+//    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
+    L2DCubism* delegate = [L2DCubism sharedInstance];
     ViewController* viewController = delegate.viewController;
     id<CAMetalDrawable> drawable = [((MetalUIView*)viewController.view).metalLayer nextDrawable];
     id<MTLCommandBuffer> commandBuffer = [viewController.commandQueue commandBuffer];

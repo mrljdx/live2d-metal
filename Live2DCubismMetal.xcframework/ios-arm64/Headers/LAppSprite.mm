@@ -192,14 +192,19 @@ typedef struct
     unsigned char* shaderRawString = LAppPal::LoadFileAsBytes(shaderFilePath.GetRawString(), &size);
     if(shaderRawString == NULL)
     {
-      return;
+        NSLog(@" ERROR Shader file LoadFileAsBytes is failed");
+        return;
     }
 
-    NSString* shader = [NSString stringWithUTF8String:(char *)shaderRawString];
+//    NSString* shader = [NSString stringWithUTF8String:(char *)shaderRawString];
+    NSString* shader = [[NSString alloc] initWithBytes:shaderRawString
+                                                      length:size
+                                                    encoding:NSUTF8StringEncoding];
+    free(shaderRawString);
     // DEBUG 调试时开启
     if (!shader)
     {
-        NSLog(@" ERROR: shader should not be nil, path=%s, rawString=%s", shaderFilePath.GetRawString(), shaderRawString);
+        NSLog(@" ERROR: Shader should not be nil, path=%s, rawString=%s", shaderFilePath.GetRawString(), shaderRawString);
         return;
     }
     // NSAssert(shader, @"shader is nil!");
@@ -216,7 +221,7 @@ typedef struct
     if (!vertexProgram)
     {
         NSLog(@">> ERROR: Couldn't load vertex function from default library");
-        return nil;
+        return;
     }
 
     //フラグメントシェーダの取得
@@ -224,21 +229,21 @@ typedef struct
     if (!fragmentProgram)
     {
         NSLog(@" ERROR: Couldn't load fragment function from default library");
-        return nil;
+        return;
     }
 
     id <MTLFunction> wireVertexProgram = [shaderLib newFunctionWithName:@"wireVertexShader"];
     if (!wireVertexProgram)
     {
         NSLog(@">> ERROR: Couldn't load wireVertex function from default library");
-        return nil;
+        return;
     }
 
     id <MTLFunction> wireFragmentProgram = [shaderLib newFunctionWithName:@"wireFragmentShader"];
     if (!wireFragmentProgram)
     {
         NSLog(@" ERROR: Couldn't load wireFragment function from default library");
-        return nil;
+        return;
     }
 
     if (!_texture) {

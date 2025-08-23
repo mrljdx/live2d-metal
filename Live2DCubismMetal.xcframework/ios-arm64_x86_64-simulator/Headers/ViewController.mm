@@ -13,6 +13,7 @@
 #import <string>
 #import "CubismFramework.hpp"
 #import "AppDelegate.h"
+#import "L2DCubism.h"
 #import "LAppSprite.h"
 #import "LAppDefine.h"
 #import "LAppLive2DManager.h"
@@ -43,6 +44,7 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 @property (nonatomic) Csm::CubismMatrix44 *deviceToScreen;///< デバイスからスクリーンへの行列
 @property (nonatomic) Csm::CubismViewMatrix *viewMatrix;
 @property (nonatomic, assign) CGRect lastBounds;
+@property (nonatomic, assign) BOOL isViewValid;
 
 @end
 
@@ -50,6 +52,7 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 
 - (void)releaseView
 {
+    self.isViewValid = NO;
     _renderSprite = nil;
 //    [_gear release];
 //    [_back release];
@@ -59,14 +62,31 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 //    _power = nil;
 
     MetalUIView *view = (MetalUIView*)self.view;
-
-    view = nil;
+    if (view)
+    {
+        view.delegate = nil;
+        [view stopRenderLoop];
+        [view removeFromSuperview];
+        view = nil;
+        NSLog(@"[Live2D] ViewController: releaseView -> stopRenderLoop called");
+    }
 
     delete(_viewMatrix);
     _viewMatrix = nil;
     delete(_deviceToScreen);
     _deviceToScreen = nil;
     _touchManager = nil;
+
+    if (_depthTexture)
+    {
+        [_depthTexture release];
+        _depthTexture = nil;
+    }
+    if (_commandQueue)
+    {
+        _commandQueue = nil;
+    }
+    NSLog(@"[Live2D] ViewController: releaseView called");
 }
 
 // Implement loadView to create a view hierarchy programmatically, without using a nib.
@@ -79,9 +99,11 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 - (void)viewDidLoad
 {
     [super viewDidLoad];
+    self.isViewValid = YES;
 
 #if TARGET_OS_MACCATALYST
-    if (AppDelegate* appDelegate = (AppDelegate*)[[UIApplication sharedApplication] delegate])
+//    if (AppDelegate* appDelegate = (AppDelegate*)[[UIApplication sharedApplication] delegate])
+    if (L2DCubism* appDelegate = [L2DCubism sharedInstance])
     {
         appDelegate.window.windowScene.titlebar.titleVisibility = UITitlebarTitleVisibilityHidden;
     }
@@ -389,7 +411,8 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 
 - (float)transformTapY:(float)deviceY
 {
-    AppDelegate *delegate = (AppDelegate *)[[UIApplication sharedApplication] delegate];
+//    AppDelegate *delegate = (AppDelegate *)[[UIApplication sharedApplication] delegate];
+    L2DCubism* delegate = [L2DCubism sharedInstance];
     ViewController* view = [delegate viewController];
     float height = view.view.frame.size.height;
     return deviceY * -1 + height;
@@ -427,6 +450,15 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 
 - (void)renderToMetalLayer:(nonnull CAMetalLayer *)layer
 {
+    //NSLog(@"[DEBUG]ViewController: renderToMetalLayer is called");
+//    L2DCubism* delegate = [L2DCubism sharedInstance];
+//    if ([delegate getIsEnd]) {
+    if (!self.isViewValid) {
+//        NSLog(@"[DEBUG]ViewController: getIsEnd is true,_commandQueue:%p", _commandQueue);
+        NSLog(@"[DEBUG]ViewController: isViewValid :%b", self.isViewValid);
+        return;
+    }
+
     LAppPal::UpdateTime();
 
     id <MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
@@ -458,11 +490,13 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
     [super dealloc];
 }
 
-- (void)switchToNextModel {
+- (void)switchToNextModel
+{
     [[LAppLive2DManager getInstance] nextScene];
 }
 
-- (void)switchToPreviousModel {
+- (void)switchToPreviousModel
+{
     LAppLive2DManager* manager = [LAppLive2DManager getInstance];
     Csm::csmInt32 currentIndex = manager.sceneIndex;
     Csm::csmInt32 modelCount = manager.modelDir.GetSize();
@@ -473,7 +507,8 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
     }
 }
 
-- (void)switchToModel:(int)index {
+- (void)switchToModel:(int)index
+{
     LAppLive2DManager* manager = [LAppLive2DManager getInstance];
     Csm::csmInt32 modelCount = manager.modelDir.GetSize();
 

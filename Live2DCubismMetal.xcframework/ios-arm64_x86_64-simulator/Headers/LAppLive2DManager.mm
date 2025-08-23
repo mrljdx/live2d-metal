@@ -10,6 +10,7 @@
 #import <stdlib.h>
 #import <Foundation/Foundation.h>
 #import "AppDelegate.h"
+#import "L2DCubism.h"
 #import "ViewController.h"
 #import "LAppModel.h"
 #import "LAppDefine.h"
@@ -84,6 +85,7 @@ Csm::csmString GetPath(CFURLRef url)
 {
     self = [super init];
     if ( self ) {
+        NSLog(@"[DEBUG] LAppLive2DManager init start");
         _renderBuffer = nil;
         _modelSprite = nil;
         _sprite = nil;
@@ -109,8 +111,7 @@ Csm::csmString GetPath(CFURLRef url)
         [self setUpModel];
 
         [self changeScene:_sceneIndex];
-
-        NSLog(@"[DEBUG] LAppLive2DManager init called");
+        NSLog(@"[DEBUG] LAppLive2DManager init success");
     }
     return self;
 }
@@ -352,7 +353,8 @@ Csm::csmString GetPath(CFURLRef url)
 
 - (void)onUpdate:(id <MTLCommandBuffer>)commandBuffer currentDrawable:(id<CAMetalDrawable>)drawable depthTexture:(id<MTLTexture>)depthTarget;
 {
-    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
+//    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
+    L2DCubism* delegate = [L2DCubism sharedInstance];
     ViewController* view = [delegate viewController];
 
     const CGFloat retinaScale = [[UIScreen mainScreen] scale];
@@ -604,7 +606,8 @@ Csm::csmString GetPath(CFURLRef url)
         float clearColorG = 0.0f;
         float clearColorB = 0.0f;
 
-        AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
+//        AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
+        L2DCubism* delegate = [L2DCubism sharedInstance];
         ViewController* view = [delegate viewController];
 
         [self SwitchRenderingTarget:useRenderTarget];
@@ -647,7 +650,8 @@ Csm::csmString GetPath(CFURLRef url)
     {
         LAppPal::PrintLogLn("[DEBUG]move model: x: [%f]; y: [%f]", x, y);
     }
-    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
+//    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
+    L2DCubism* delegate = [L2DCubism sharedInstance];
     ViewController* view = [delegate viewController];
 
     const CGFloat retinaScale = [[UIScreen mainScreen] scale];
@@ -700,7 +704,8 @@ Csm::csmString GetPath(CFURLRef url)
 - (void)setupWireframesForModel:(LAppModel *)model
 {
     [self.wireSprites removeAllObjects];          // 先清空旧的
-    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
+//    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
+    L2DCubism* delegate = [L2DCubism sharedInstance];
     ViewController* view = [delegate viewController];
 
     const CGFloat retinaScale = [[UIScreen mainScreen] scale];
@@ -948,9 +953,10 @@ Csm::csmString GetPath(CFURLRef url)
     const Csm::csmInt32 hitAreaCount = model->GetModelSetting()->GetHitAreasCount();
     if (hitAreaCount <= 0) return;
 
-    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
+//    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
+    L2DCubism* delegate = [L2DCubism sharedInstance];
     ViewController* view = [delegate viewController];
-    
+
     // 获取屏幕尺寸（使用实际视图尺寸，不是retina scale）
     const CGFloat retinaScale = [[UIScreen mainScreen] scale];
     const float width = view.view.frame.size.width;

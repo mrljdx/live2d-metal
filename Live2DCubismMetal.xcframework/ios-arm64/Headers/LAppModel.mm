@@ -13,6 +13,7 @@
 #import "LAppPal.h"
 #import "LAppTextureManager.h"
 #import "AppDelegate.h"
+#import "L2DCubism.h"
 #import "Live2DCallbackBridge.h"
 #import <CubismDefaultParameterId.hpp>
 #import <CubismModelSettingJson.hpp>
@@ -85,7 +86,8 @@ LAppModel::~LAppModel()
         ReleaseMotionGroup(group);
     }
 
-    AppDelegate *delegate = (AppDelegate *) [[UIApplication sharedApplication] delegate];
+//    AppDelegate *delegate = (AppDelegate *) [[UIApplication sharedApplication] delegate];
+    L2DCubism *delegate = [L2DCubism sharedInstance];
     LAppTextureManager *textureManager = [delegate getTextureManager];
 
     for (csmInt32 modelTextureNumber = 0; modelTextureNumber < _modelSetting->GetTextureCount(); modelTextureNumber++)
@@ -789,7 +791,8 @@ void LAppModel::SetupTextures()
         csmString texturePath = _modelSetting->GetTextureFileName(modelTextureNumber);
         texturePath = _modelHomeDir + texturePath;
 
-        AppDelegate *delegate = (AppDelegate *) [[UIApplication sharedApplication] delegate];
+//        AppDelegate *delegate = (AppDelegate *) [[UIApplication sharedApplication] delegate];
+        L2DCubism *delegate = [L2DCubism sharedInstance];
         TextureInfo* texture = [[delegate getTextureManager] createTextureFromPngFile:texturePath.GetRawString()];
         id <MTLTexture> mtlTextueNumber = texture->id;
 

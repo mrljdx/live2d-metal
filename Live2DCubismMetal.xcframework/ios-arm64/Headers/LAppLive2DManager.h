@@ -168,7 +168,7 @@ typedef NS_ENUM(NSUInteger, SelectTarget)
  * 绘制可点击区域
  * @param model
  */
-- (void) drawClickableAreas:(LAppModel*)model;
+- (void)drawClickableAreas:(LAppModel*)model;
 
 - (void)setupWireframesForModel:(LAppModel *)model;
 

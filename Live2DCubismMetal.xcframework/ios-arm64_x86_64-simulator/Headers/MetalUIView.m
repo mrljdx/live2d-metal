@@ -179,6 +179,20 @@
     [self resizeDrawable:self.window.screen.nativeScale];
 }
 
+- (void)dealloc
+{
+    [self stopRenderLoop];
+#if !RENDER_ON_MAIN_THREAD
+    if (_renderThread && [_renderThread isExecuting]) {
+        @synchronized(self) {
+            _continueRunLoop = NO;
+        }
+        [_renderThread cancel];
+    }
+#endif
+    [super dealloc];
+}
+
 #endif // END AUTOMATICALLY_RESIZE
 
 @end
