@@ -53,7 +53,7 @@ LAppModel::LAppModel()
 , _modelSetting(NULL)
 , _userTimeSeconds(0.0f)
 , _lipSyncValue(0.0f)
-, _lipSyncSensitivity(1.5f) // 默认灵敏度1.5倍
+, _lipSyncSensitivity(3.0f) // 默认灵敏度1.5倍
 {
     if (MocConsistencyValidationEnable)
     {
