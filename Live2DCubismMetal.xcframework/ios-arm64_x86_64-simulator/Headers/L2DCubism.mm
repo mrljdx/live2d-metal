@@ -82,7 +82,8 @@
 - (void)disposeCubism {
 
     // 1. 停止渲染并移除视图
-    if ([self.viewController respondsToSelector:@selector(releaseView)]) {
+    if ([self.viewController respondsToSelector:@selector(releaseView)])
+    {
         [self.viewController releaseView];
     }
 
@@ -91,7 +92,11 @@
     self.window = nil;
     self.viewController = nil;
 
-    _textureManager = nil;
+    if (_textureManager)
+    {
+       [_textureManager releaseTextures];
+        _textureManager = nil;
+    }
 
     // 3. 清理 Cubism SDK 及单例
     [LAppLive2DManager releaseInstance];

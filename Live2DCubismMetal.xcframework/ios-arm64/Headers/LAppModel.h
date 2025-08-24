@@ -59,17 +59,6 @@ public:
     void Draw(Csm::CubismMatrix44& matrix);
 
     /**
-     * @brief   モデルのワイヤーフレームを描画する処理
-     *
-     * @param[in]  matrix  View-Projection行列
-     * @param[in]  r       線の赤色成分 (0.0-1.0)
-     * @param[in]  g       線の緑色成分 (0.0-1.0)
-     * @param[in]  b       線の青色成分 (0.0-1.0)
-     * @param[in]  a       線の透明度 (0.0-1.0)
-     */
-    void DrawWireFrame(Csm::CubismMatrix44& matrix, Csm::csmFloat32 r = 1.0f, Csm::csmFloat32 g = 0.0f, Csm::csmFloat32 b = 0.0f, Csm::csmFloat32 a = 1.0f);
-
-    /**
      * @brief   引数で指定したモーションの再生を開始する。
      *
      * @param[in]   group                       モーショングループ名
@@ -127,6 +116,14 @@ public:
     Csm::Rendering::CubismOffscreenSurface_Metal& GetRenderBuffer();
 
     /**
+     * @brief   .moc3ファイルの整合性をチェックする
+     *
+     * @param[in]   mocName MOC3ファイル名
+     * @return      MOC3に整合性があれば'true'、そうでなければ'false'。
+     */
+    Csm::csmBool HasMocConsistencyFromFile(const Csm::csmChar* mocFileName);
+
+    /**
      * @brief   モデルセッティングを取得する
      */
     Csm::ICubismModelSetting* GetModelSetting() const { return _modelSetting; }
@@ -137,18 +134,15 @@ public:
     const Csm::csmString& GetModelHomeDir() const { return _modelHomeDir; }
 
     /**
-     * @brief   .moc3ファイルの整合性をチェックする
-     *
-     * @param[in]   mocName MOC3ファイル名
-     * @return      MOC3に整合性があれば'true'、そうでなければ'false'。
-     */
-    Csm::csmBool HasMocConsistencyFromFile(const Csm::csmChar* mocFileName);
-
-    /**
      * @brief リップシンクの値を設定する
      * @param mouth 口の開き具合(0.0〜1.0)
      */
     void SetLipSyncValue(Csm::csmFloat32 mouth);
+
+    /**
+     * @brief 释放Model的相关资源
+     */
+    void Release();
 
 protected:
     /**

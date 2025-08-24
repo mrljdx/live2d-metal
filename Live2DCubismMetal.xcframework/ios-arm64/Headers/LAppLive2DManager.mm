@@ -78,6 +78,7 @@ Csm::csmString GetPath(CFURLRef url)
     {
         [s_instance release];
         s_instance = nil;
+        NSLog(@"[DEBUG] LAppLive2DManager releaseInstance called");
     }
 }
 
@@ -155,11 +156,13 @@ Csm::csmString GetPath(CFURLRef url)
 {
     for (Csm::csmUint32 i = 0; i < _models.GetSize(); i++)
     {
+        _models[i]->Release();
         delete _models[i];
     }
+    _models.Clear();
+
     [self.wireSprites removeAllObjects];   // ARC 会自动 release
 
-    _models.Clear();
 }
 
 - (void)setUpModel
