@@ -26,17 +26,25 @@ double LAppPal::s_deltaTime = 0.0;
 
 csmByte* LAppPal::LoadFileAsBytes(const string filePath, csmSizeInt* outSize)
 {
-    int path_i = static_cast<int>(filePath.find_last_of("/")+1);
-    int ext_i = static_cast<int>(filePath.find_last_of("."));
-    std::string pathname = filePath.substr(0,path_i);
-    std::string extname = filePath.substr(ext_i,filePath.size()-ext_i);
-    std::string filename = filePath.substr(path_i,ext_i-path_i);
-    NSString* castFilePath = [[NSBundle mainBundle]
-                              pathForResource:[NSString stringWithUTF8String:filename.c_str()]
-                              ofType:[NSString stringWithUTF8String:extname.c_str()]
-                              inDirectory:[NSString stringWithUTF8String:pathname.c_str()]];
+    NSString* nsPath = [NSString stringWithUTF8String:filePath.c_str()];
+    NSData* data = nil;
 
-    NSData *data = [NSData dataWithContentsOfFile:castFilePath];
+    if ([nsPath hasPrefix:@"/"]) {
+        // 绝对路径 → 直接读文件
+        data = [NSData dataWithContentsOfFile:nsPath];
+    } else {
+        // 相对路径 → 回退到 bundle
+        int slash = static_cast<int>(filePath.find_last_of("/") + 1);
+        int dot   = static_cast<int>(filePath.find_last_of("."));
+        NSString* dir  = slash > 0 ? [NSString stringWithUTF8String:filePath.substr(0, slash - 1).c_str()] : @"";
+        NSString* name = [NSString stringWithUTF8String:filePath.substr(slash, dot - slash).c_str()];
+        NSString* ext  = [NSString stringWithUTF8String:filePath.substr(dot).c_str()];
+
+        NSString* bundlePath = [[NSBundle mainBundle] pathForResource:name
+                                                               ofType:ext
+                                                          inDirectory:dir];
+        data = [NSData dataWithContentsOfFile:bundlePath];
+    }
 
     if (data == nil)
     {
