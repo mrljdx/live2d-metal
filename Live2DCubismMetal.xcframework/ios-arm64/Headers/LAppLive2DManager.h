@@ -27,6 +27,7 @@ typedef NS_ENUM(NSUInteger, SelectTarget)
 @property (nonatomic) Csm::CubismMatrix44 *viewMatrix; //モデル描画に用いるView行列
 @property (nonatomic) Csm::csmVector<LAppModel*> models; //モデルインスタンスのコンテナ
 @property (nonatomic) Csm::csmInt32 sceneIndex; //表示するシーンのインデックス値
+@property (nonatomic, strong) NSString *currentModelRoot; // 当前选择的模型路径地址
 @property (nonatomic) SelectTarget renderTarget;
 @property (nonatomic) Csm::Rendering::CubismOffscreenSurface_Metal* renderBuffer;
 @property (nonatomic) LAppSprite* sprite;
@@ -98,6 +99,11 @@ typedef NS_ENUM(NSUInteger, SelectTarget)
 - (void)nextScene;
 
 /**
+ * @brief 切换到上一个模型
+ */
+- (void)preScene;
+
+/**
  * @brief   シーンを切り替える
  *           サンプルアプリケーションではモデルセットの切り替えを行う。
  */
@@ -165,12 +171,36 @@ typedef NS_ENUM(NSUInteger, SelectTarget)
 - (BOOL)isShowingClickableAreas;
 
 /**
- * 绘制可点击区域
+ * @brief 绘制可点击区域
  * @param model
  */
 - (void)drawClickableAreas:(LAppModel*)model;
 
+/**
+ * @brief 绘制可点击区域线框
+ * @param model
+ */
 - (void)setupWireframesForModel:(LAppModel *)model;
+
+/**
+ * @brief 加载模型
+ * @param rootPath 内部live2d的根目录地址
+ */
+- (BOOL)loadModels:(const Csm::csmString&)rootPath;
+
+/**
+ * @brief 加载指定目录下的模型
+ * @param dir 目录地址
+ */
+- (BOOL)loadModelPath:(const Csm::csmString&)dir
+             jsonName:(const Csm::csmString&)jsonName;
+
+/**
+ * @brief 移除所有的加载的模型
+ */
+- (BOOL)removeAllModels;
+
+- (int32_t)getLoadedModelNum;
 
 @end
 

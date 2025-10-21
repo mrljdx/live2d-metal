@@ -29,4 +29,11 @@
 /// Dispose cubism framework.
 - (void)disposeCubism;
 
+/// Load Models
+- (bool)loadModels:(NSString *)rootPath;
+
+/// Load Model Path
+- (bool)loadModelPath:(NSString *)dir
+             jsonName:(NSString *)jsonName;
+
 @end

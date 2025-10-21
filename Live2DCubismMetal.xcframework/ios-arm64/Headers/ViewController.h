@@ -137,4 +137,27 @@
                        r:(float)r g:(float)g b:(float)b
                        areaName:(NSString*)areaName;
 
+/**
+ * @brief 加载模型
+ * @param rootPath
+ */
+- (BOOL)loadModels:(NSString *)rootPath;
+
+/**
+ * @brief 加载指定目录下的模型
+ * @param dir
+ */
+- (BOOL)loadModelPath:(NSString *)dir
+             jsonName:(NSString*)jsonName;
+
+/**
+ * @brief 移除所有的模型
+ */
+- (BOOL)removeAllModels;
+
+/**
+ * @brief 获取当前已经加载的模型数量
+ */
+- (int32_t)getLoadedModelNum;
+
 @end

@@ -9,14 +9,14 @@
 
 @interface L2DCubism ()
 
-@property (nonatomic) LAppAllocator cubismAllocator; // Cubism SDK Allocator
-@property (nonatomic) Csm::CubismFramework::Option cubismOption; // Cubism SDK Option
-@property (nonatomic) bool captured; // クリックしているか
-@property (nonatomic) float mouseX; // マウスX座標
-@property (nonatomic) float mouseY; // マウスY座標
-@property (nonatomic) bool isEnd; // APPを終了しているか
-@property (nonatomic, readwrite) LAppTextureManager *textureManager; // テクスチャマネージャー
-@property (nonatomic) Csm::csmInt32 sceneIndex;  //アプリケーションをバッググラウンド実行するときに一時的にシーンインデックス値を保存する
+@property(nonatomic) LAppAllocator cubismAllocator; // Cubism SDK Allocator
+@property(nonatomic) Csm::CubismFramework::Option cubismOption; // Cubism SDK Option
+@property(nonatomic) bool captured; // クリックしているか
+@property(nonatomic) float mouseX; // マウスX座標
+@property(nonatomic) float mouseY; // マウスY座標
+@property(nonatomic) bool isEnd; // APPを終了しているか
+@property(nonatomic, readwrite) LAppTextureManager *textureManager; // テクスチャマネージャー
+@property(nonatomic) Csm::csmInt32 sceneIndex;  //アプリケーションをバッググラウンド実行するときに一時的にシーンインデックス値を保存する
 
 @end
 
@@ -47,7 +47,7 @@
 - (void)initCubism {
     NSLog(@"[Live2D] L2DCubism: initCubism start");
     if (!_textureManager) {
-        _textureManager = [[LAppTextureManager alloc]init];
+        _textureManager = [[LAppTextureManager alloc] init];
     }
     // 重置isEnd
     self.isEnd = false;
@@ -62,7 +62,7 @@
     _cubismOption.LoadFileFunction = LAppPal::LoadFileAsBytes;
     _cubismOption.ReleaseBytesFunction = LAppPal::ReleaseBytes;
 
-    Csm::CubismFramework::StartUp(&_cubismAllocator,&_cubismOption);
+    Csm::CubismFramework::StartUp(&_cubismAllocator, &_cubismOption);
 
     Csm::CubismFramework::Initialize();
 
@@ -74,16 +74,14 @@
     NSLog(@"[Live2D] L2DCubism: initCubism success");
 }
 
-- (bool)getIsEnd
-{
+- (bool)getIsEnd {
     return _isEnd;
 }
 
 - (void)disposeCubism {
 
     // 1. 停止渲染并移除视图
-    if ([self.viewController respondsToSelector:@selector(releaseView)])
-    {
+    if ([self.viewController respondsToSelector:@selector(releaseView)]) {
         [self.viewController releaseView];
     }
 
@@ -92,9 +90,8 @@
     self.window = nil;
     self.viewController = nil;
 
-    if (_textureManager)
-    {
-       [_textureManager releaseTextures];
+    if (_textureManager) {
+        [_textureManager releaseTextures];
         _textureManager = nil;
     }
 
@@ -108,6 +105,26 @@
     _viewController = nil;
 
     NSLog(@"[Live2D] L2DCubism: disposeCubism called");
+}
+
+- (bool)loadModels:(NSString *)rootPath {
+    // NSString → std::string → Csm::csmString
+    std::string utf8Path = [rootPath UTF8String];
+    Csm::csmString csmPath(utf8Path.c_str());
+    [[LAppLive2DManager getInstance] loadModels:csmPath];
+    return true;
+}
+
+- (bool)loadModelPath:(NSString *)dir
+             jsonName:(NSString *)jsonName {
+    // NSString → std::string → Csm::csmString
+    std::string utf8Path = [dir UTF8String];
+    Csm::csmString csmPath(utf8Path.c_str());
+    std::string utf8Name = [jsonName UTF8String];
+    Csm::csmString csmName(utf8Name.c_str());
+    [[LAppLive2DManager getInstance] loadModelPath:csmPath
+                                          jsonName:csmName];
+    return true;
 }
 
 @end

@@ -279,4 +279,44 @@
     }
 }
 
+- (BOOL)loadModels:(NSString *)rootPath
+{
+    if ([_internalViewController respondsToSelector:@selector(loadModels:)]) {
+        return [_internalViewController loadModels:rootPath];
+    } else {
+        NSLog(@"[Live2D] Warning: loadModels: method not available");
+        return NO;
+    }
+}
+
+- (BOOL)loadModelPath:(NSString *)dir jsonName:(NSString*)jsonName {
+    if ([_internalViewController respondsToSelector:@selector(loadModelPath:jsonName:)]) {
+        return [_internalViewController loadModelPath:dir
+                                             jsonName:jsonName];
+    } else {
+        NSLog(@"[Live2D] Warning: loadModelPath: method not available");
+        return NO;
+    }
+}
+
+- (BOOL)removeAllModels
+{
+    if ([_internalViewController respondsToSelector:@selector(removeAllModels)]) {
+        return [_internalViewController removeAllModels];
+    } else {
+        NSLog(@"[Live2D] Warning: removeAllModels: method not available");
+        return NO;
+    }
+}
+
+- (int32_t)getLoadedModelNum
+{
+    if ([_internalViewController respondsToSelector:@selector(getLoadedModelNum)]) {
+        return [_internalViewController getLoadedModelNum];
+    } else {
+        NSLog(@"[Live2D] Warning: getLoadedModelNum: method not available");
+        return 0;
+    }
+}
+
 @end

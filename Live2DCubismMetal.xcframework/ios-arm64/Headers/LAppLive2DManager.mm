@@ -19,79 +19,71 @@
 #import "Rendering/Metal/CubismRenderingInstanceSingleton_Metal.h"
 #import "Live2DCallbackBridge.h"
 
-@interface LAppLive2DManager()
-@property (nonatomic, assign) float modelScale;   // 模型缩放
-@property (nonatomic, assign) float modelPositionX;   // 模型X坐标
-@property (nonatomic, assign) float modelPositionY;   // 模型Y坐标
-@property (nonatomic, assign) float modelMouth;   // 模型口型
-@property (nonatomic, strong) NSMutableDictionary<NSString *, LAppSprite *> *wireSprites; // 专门画线框的精灵
+@interface LAppLive2DManager ()
+@property(nonatomic, assign) float modelScale;   // 模型缩放
+@property(nonatomic, assign) float modelPositionX;   // 模型X坐标
+@property(nonatomic, assign) float modelPositionY;   // 模型Y坐标
+@property(nonatomic, assign) float modelMouth;   // 模型口型
+@property(nonatomic, strong) NSMutableDictionary<NSString *, LAppSprite *> *wireSprites; // 专门画线框的精灵
 - (id)init;
+
 - (void)dealloc;
 @end
 
 @implementation LAppLive2DManager
 
-static LAppLive2DManager* s_instance = nil;
+static LAppLive2DManager *s_instance = nil;
 
-void BeganMotion(Csm::ACubismMotion* self)
-{
+void BeganMotion(Csm::ACubismMotion *self) {
     LAppPal::PrintLogLn("Motion began: %x", self);
 }
 
-void FinishedMotion(Csm::ACubismMotion* self)
-{
+void FinishedMotion(Csm::ACubismMotion *self) {
     LAppPal::PrintLogLn("Motion Finished: %x", self);
 }
 
-int CompareCsmString(const void* a, const void* b)
-{
-    return strcmp(reinterpret_cast<const Csm::csmString*>(a)->GetRawString(),
-        reinterpret_cast<const Csm::csmString*>(b)->GetRawString());
+int CompareCsmString(const void *a, const void *b) {
+    return strcmp(reinterpret_cast<const Csm::csmString *>(a)->GetRawString(),
+            reinterpret_cast<const Csm::csmString *>(b)->GetRawString());
 }
 
-Csm::csmString GetPath(CFURLRef url)
-{
-  CFStringRef cfstr = CFURLCopyFileSystemPath(url, CFURLPathStyle::kCFURLPOSIXPathStyle);
-  CFIndex size = CFStringGetLength(cfstr) * 4 + 1; // Length * UTF-16 Max Character size + null-terminated-byte
-  char* buf = new char[size];
-  CFStringGetCString(cfstr, buf, size, CFStringBuiltInEncodings::kCFStringEncodingUTF8);
-  Csm::csmString result(buf);
-  delete[] buf;
-  return result;
+Csm::csmString GetPath(CFURLRef url) {
+    CFStringRef cfstr = CFURLCopyFileSystemPath(url, CFURLPathStyle::kCFURLPOSIXPathStyle);
+    CFIndex size = CFStringGetLength(cfstr) * 4 + 1; // Length * UTF-16 Max Character size + null-terminated-byte
+    char *buf = new char[size];
+    CFStringGetCString(cfstr, buf, size, CFStringBuiltInEncodings::kCFStringEncodingUTF8);
+    Csm::csmString result(buf);
+    delete[] buf;
+    return result;
 }
 
-+ (LAppLive2DManager*)getInstance
-{
-    @synchronized(self)
-    {
-        if (s_instance == nil)
-        {
++ (LAppLive2DManager *)getInstance {
+    @synchronized (self) {
+        if (s_instance == nil) {
             s_instance = [[LAppLive2DManager alloc] init];
         }
     }
     return s_instance;
 }
 
-+ (void)releaseInstance
-{
-    if (s_instance != nil)
-    {
++ (void)releaseInstance {
+    if (s_instance != nil) {
         [s_instance release];
         s_instance = nil;
         NSLog(@"[DEBUG] LAppLive2DManager releaseInstance called");
     }
 }
 
-- (id)init
-{
+- (id)init {
     self = [super init];
-    if ( self ) {
+    if (self) {
         NSLog(@"[DEBUG] LAppLive2DManager init start");
         _renderBuffer = nil;
         _modelSprite = nil;
         _sprite = nil;
         _viewMatrix = nil;
         _sceneIndex = 0;
+        _currentModelRoot = nil; // 当前选择的模型的路径地址
         _modelScale = 1.0f;   // 默认不放大
         _modelPositionX = 0.0f; // 模型X坐标
         _modelPositionY = 0.0f; // 模型Y坐标
@@ -109,38 +101,32 @@ Csm::csmString GetPath(CFURLRef url)
         _renderPassDescriptor.depthAttachment.storeAction = MTLStoreActionDontCare;
         _renderPassDescriptor.depthAttachment.clearDepth = 1.0;
 
-        [self setUpModel];
-
-        [self changeScene:_sceneIndex];
+        //[self setUpModel]; // 设置模型路径地址
+        //[self changeScene:_sceneIndex]; // 加载第一个模型
         NSLog(@"[DEBUG] LAppLive2DManager init success");
     }
     return self;
 }
 
-- (void)dealloc
-{
-    if (_renderBuffer)
-    {
+- (void)dealloc {
+    if (_renderBuffer) {
         _renderBuffer->DestroyOffscreenSurface();
         delete _renderBuffer;
         _renderBuffer = NULL;
     }
 
-    if (_renderPassDescriptor != nil)
-    {
+    if (_renderPassDescriptor != nil) {
         [_renderPassDescriptor release];
         _renderPassDescriptor = nil;
     }
 
-    if (_modelSprite != nil)
-    {
+    if (_modelSprite != nil) {
         [_modelSprite release];
         _modelSprite = nil;
     }
 
-    if (_sprite != nil)
-    {
-       [_sprite release];
+    if (_sprite != nil) {
+        [_sprite release];
         _sprite = nil;
     }
 
@@ -152,10 +138,8 @@ Csm::csmString GetPath(CFURLRef url)
     NSLog(@"[DEBUG] LAppLive2DManager dealloc called");
 }
 
-- (void)releaseAllModel
-{
-    for (Csm::csmUint32 i = 0; i < _models.GetSize(); i++)
-    {
+- (void)releaseAllModel {
+    for (Csm::csmUint32 i = 0; i < _models.GetSize(); i++) {
         _models[i]->Release();
         delete _models[i];
     }
@@ -165,88 +149,73 @@ Csm::csmString GetPath(CFURLRef url)
 
 }
 
-- (void)setUpModel
-{
+- (void)setUpModel {
     _modelDir.Clear();
 
-    NSBundle* bundle = [NSBundle mainBundle];
-    NSString* resPath = [NSString stringWithUTF8String:LAppDefine::ResourcesPath];
-    NSArray* resArr = [bundle pathsForResourcesOfType:NULL inDirectory:resPath];
+    NSBundle *bundle = [NSBundle mainBundle];
+    NSString *resPath = [NSString stringWithUTF8String:LAppDefine::ResourcesPath];
+    NSArray *resArr = [bundle pathsForResourcesOfType:NULL inDirectory:resPath];
     NSUInteger cnt = [resArr count];
 
-    for (NSUInteger i = 0; i < cnt; i++)
-    {
-        NSString* modelName = [[resArr objectAtIndex:i] lastPathComponent];
-        NSMutableString* modelDirPath = [NSMutableString stringWithString:resPath];
+    for (NSUInteger i = 0; i < cnt; i++) {
+        NSString *modelName = [[resArr objectAtIndex:i] lastPathComponent];
+        NSMutableString *modelDirPath = [NSMutableString stringWithString:resPath];
         [modelDirPath appendString:@"/"];
         [modelDirPath appendString:modelName];
-        NSArray* model3json = [bundle pathsForResourcesOfType:@".model3.json" inDirectory:modelDirPath];
-        if ([model3json count] == 1)
-        {
+        NSArray *model3json = [bundle pathsForResourcesOfType:@".model3.json" inDirectory:modelDirPath];
+        if ([model3json count] == 1) {
             _modelDir.PushBack(Csm::csmString([modelName UTF8String]));
         }
     }
     qsort(_modelDir.GetPtr(), _modelDir.GetSize(), sizeof(Csm::csmString), CompareCsmString);
 }
 
-- (LAppModel*)getModel:(Csm::csmUint32)no
-{
-    if (no < _models.GetSize())
-    {
+- (LAppModel *)getModel:(Csm::csmUint32)no {
+    if (no < _models.GetSize()) {
         return _models[no];
     }
     return nil;
 }
 
-- (void)onDrag:(Csm::csmFloat32)x floatY:(Csm::csmFloat32)y
-{
-    for (Csm::csmUint32 i = 0; i < _models.GetSize(); i++)
-    {
-        Csm::CubismUserModel* model = static_cast<Csm::CubismUserModel*>([self getModel:i]);
-        model->SetDragging(x,y);
+- (void)onDrag:(Csm::csmFloat32)x floatY:(Csm::csmFloat32)y {
+    for (Csm::csmUint32 i = 0; i < _models.GetSize(); i++) {
+        Csm::CubismUserModel *model = static_cast<Csm::CubismUserModel *>([self getModel:i]);
+        model->SetDragging(x, y);
     }
 }
 
-- (void)onTap:(Csm::csmFloat32)x floatY:(Csm::csmFloat32)y;
-{
-    if (LAppDefine::DebugLogEnable)
-    {
+- (void)onTap:(Csm::csmFloat32)x floatY:(Csm::csmFloat32)y; {
+    if (LAppDefine::DebugLogEnable) {
         LAppPal::PrintLogLn("[APP]tap point: {x:%.2f y:%.2f}", x, y);
     }
 
-    for (Csm::csmUint32 i = 0; i < _models.GetSize(); i++)
-    {
-        if (_models[i]->HitTest(LAppDefine::HitAreaNameHead,x,y))
-        {
-            if (LAppDefine::DebugLogEnable)
-            {
+    for (Csm::csmUint32 i = 0; i < _models.GetSize(); i++) {
+        if (_models[i]->HitTest(LAppDefine::HitAreaNameHead, x, y)) {
+            if (LAppDefine::DebugLogEnable) {
                 LAppPal::PrintLogLn("[APP]hit area: [%s]", LAppDefine::HitAreaNameHead);
             }
-            
+
             // 触发点击回调
-            [[Live2DCallbackBridge sharedInstance] onHitArea:LAppDefine::HitAreaNameHead 
-                                                   modelName:[NSString stringWithUTF8String:_modelDir[_sceneIndex].GetRawString()].UTF8String 
+            [[Live2DCallbackBridge sharedInstance] onHitArea:LAppDefine::HitAreaNameHead
+                                                   modelName:[NSString stringWithUTF8String:_modelDir[_sceneIndex].GetRawString()].UTF8String
                                                            x:x y:y];
-            
+
             _models[i]->SetRandomExpression();
 
-        }
-        else if (_models[i]->HitTest(LAppDefine::HitAreaNameBody, x, y))
-        {
-            if (LAppDefine::DebugLogEnable)
-            {
+        } else if (_models[i]->HitTest(LAppDefine::HitAreaNameBody, x, y)) {
+            if (LAppDefine::DebugLogEnable) {
                 LAppPal::PrintLogLn("[APP]hit area: [%s]", LAppDefine::HitAreaNameBody);
             }
-            
+
             // 触发点击回调
-            [[Live2DCallbackBridge sharedInstance] onHitArea:LAppDefine::HitAreaNameBody 
-                                                   modelName:[NSString stringWithUTF8String:_modelDir[_sceneIndex].GetRawString()].UTF8String 
+            [[Live2DCallbackBridge sharedInstance] onHitArea:LAppDefine::HitAreaNameBody
+                                                   modelName:[NSString stringWithUTF8String:_modelDir[_sceneIndex].GetRawString()].UTF8String
                                                            x:x y:y];
-            
+
             // _models[i]->StartRandomMotion(LAppDefine::MotionGroupTapBody, LAppDefine::PriorityNormal, FinishedMotion, BeganMotion);
 
             // 触发动画开始回调 - 获取实际的motion文件路径
-            const Csm::csmChar* motionGroup = LAppDefine::MotionGroupTapBody;
+            const Csm::csmChar *motionGroup = LAppDefine::MotionGroupTapBody;
             Csm::csmInt32 motionCount = _models[i]->GetModelSetting()->GetMotionCount(motionGroup);
             LAppPal::PrintLogLn("[DEBUG] motionCount: %d", motionCount);
             if (motionCount > 0) {
@@ -256,9 +225,8 @@ Csm::csmString GetPath(CFURLRef url)
 
                 const Csm::csmString fileName = _models[i]->GetModelSetting()->GetMotionFileName(motionGroup, selectedIndex);
                 Csm::csmString motionPath = Csm::csmString(_models[i]->GetModelHomeDir()) + fileName;
-                const Csm::csmChar* filePath = motionPath.GetRawString();
-                if (LAppDefine::DebugLogEnable)
-                {
+                const Csm::csmChar *filePath = motionPath.GetRawString();
+                if (LAppDefine::DebugLogEnable) {
                     // 添加调试日志
                     LAppPal::PrintLogLn("[DEBUG] fileName: %s", fileName.GetRawString());
                     LAppPal::PrintLogLn("[DEBUG] modelHomeDir: %s", _models[i]->GetModelHomeDir().GetRawString());
@@ -270,31 +238,26 @@ Csm::csmString GetPath(CFURLRef url)
                 static char staticBuffer[512];
                 strncpy(staticBuffer, filePath, sizeof(staticBuffer) - 1);
                 staticBuffer[sizeof(staticBuffer) - 1] = '\0';
-                
+
                 [[Live2DCallbackBridge sharedInstance] onMotionStart:motionGroup
-                                                        motionIndex:selectedIndex
+                                                         motionIndex:selectedIndex
                                                       motionFilePath:staticBuffer];
             }
-        }
-        else
-        {
-            if ([self hasClickableAreas])
-            {
+        } else {
+            if ([self hasClickableAreas]) {
                 return;
             }
-            if (LAppDefine::DebugLogEnable)
-            {
+            if (LAppDefine::DebugLogEnable) {
                 LAppPal::PrintLogLn("[APP]no hit areas found, triggering motion directly");
             }
 
             // 处理无HitAreas的模型，直接触发Motion
-            Csm::ICubismModelSetting* setting = _models[i]->GetModelSetting();
-            if (setting)
-            {
+            Csm::ICubismModelSetting *setting = _models[i]->GetModelSetting();
+            if (setting) {
                 // 定义支持的motion分组
-                const Csm::csmChar* motionGroups[] = { "Tap", "Flick", "FlickRight", "FlickLeft", "Flick3", "Shake" };
+                const Csm::csmChar *motionGroups[] = {"Tap", "Flick", "FlickRight", "FlickLeft", "Flick3", "Shake"};
                 Csm::csmInt32 groupCount = sizeof(motionGroups) / sizeof(motionGroups[0]);
-                
+
                 // 先检查Tap分组，如果没有再随机选择其他分组
                 Csm::csmInt32 tapMotionCount = setting->GetMotionCount(LAppDefine::MotionGroupTapBody);
                 if (tapMotionCount > 0) {
@@ -304,25 +267,23 @@ Csm::csmString GetPath(CFURLRef url)
 
                     const Csm::csmString fileName = setting->GetMotionFileName(LAppDefine::MotionGroupTapBody, selectedIndex);
                     Csm::csmString motionPath = Csm::csmString(_models[i]->GetModelHomeDir()) + fileName;
-                    const Csm::csmChar* filePath = motionPath.GetRawString();
-                    
-                    if (LAppDefine::DebugLogEnable)
-                    {
+                    const Csm::csmChar *filePath = motionPath.GetRawString();
+
+                    if (LAppDefine::DebugLogEnable) {
                         LAppPal::PrintLogLn("[DEBUG] Using Tap motion: %s", fileName.GetRawString());
                     }
-                    
+
                     // 创建静态缓冲区来存储字符串，确保生命周期足够长
                     static char staticBuffer[512];
                     strncpy(staticBuffer, filePath, sizeof(staticBuffer) - 1);
                     staticBuffer[sizeof(staticBuffer) - 1] = '\0';
-                    
+
                     [[Live2DCallbackBridge sharedInstance] onMotionStart:LAppDefine::MotionGroupTapBody
-                                                            motionIndex:selectedIndex
+                                                             motionIndex:selectedIndex
                                                           motionFilePath:staticBuffer];
                 } else {
                     // Tap分组为空，尝试其他分组
-                    for (Csm::csmInt32 j = 0; j < groupCount; j++)
-                    {
+                    for (Csm::csmInt32 j = 0; j < groupCount; j++) {
                         Csm::csmInt32 motionCount = setting->GetMotionCount(motionGroups[j]);
                         if (motionCount > 0) {
                             Csm::csmInt32 selectedIndex = rand() % motionCount;
@@ -330,20 +291,19 @@ Csm::csmString GetPath(CFURLRef url)
 
                             const Csm::csmString fileName = setting->GetMotionFileName(motionGroups[j], selectedIndex);
                             Csm::csmString motionPath = Csm::csmString(_models[i]->GetModelHomeDir()) + fileName;
-                            const Csm::csmChar* filePath = motionPath.GetRawString();
-                            
-                            if (LAppDefine::DebugLogEnable)
-                            {
+                            const Csm::csmChar *filePath = motionPath.GetRawString();
+
+                            if (LAppDefine::DebugLogEnable) {
                                 LAppPal::PrintLogLn("[DEBUG] Using %s motion: %s", motionGroups[j], fileName.GetRawString());
                             }
-                            
+
                             // 创建静态缓冲区来存储字符串，确保生命周期足够长
                             static char staticBuffer[512];
                             strncpy(staticBuffer, filePath, sizeof(staticBuffer) - 1);
                             staticBuffer[sizeof(staticBuffer) - 1] = '\0';
-                            
+
                             [[Live2DCallbackBridge sharedInstance] onMotionStart:motionGroups[j]
-                                                                    motionIndex:selectedIndex
+                                                                     motionIndex:selectedIndex
                                                                   motionFilePath:staticBuffer];
                             break; // 找到第一个有motion的分组就停止
                         }
@@ -354,11 +314,10 @@ Csm::csmString GetPath(CFURLRef url)
     }
 }
 
-- (void)onUpdate:(id <MTLCommandBuffer>)commandBuffer currentDrawable:(id<CAMetalDrawable>)drawable depthTexture:(id<MTLTexture>)depthTarget;
-{
+- (void)onUpdate:(id <MTLCommandBuffer>)commandBuffer currentDrawable:(id <CAMetalDrawable>)drawable depthTexture:(id <MTLTexture>)depthTarget; {
 //    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
-    L2DCubism* delegate = [L2DCubism sharedInstance];
-    ViewController* view = [delegate viewController];
+    L2DCubism *delegate = [L2DCubism sharedInstance];
+    ViewController *view = [delegate viewController];
 
     const CGFloat retinaScale = [[UIScreen mainScreen] scale];
     // Retinaディスプレイサイズにするため倍率をかける
@@ -369,64 +328,58 @@ Csm::csmString GetPath(CFURLRef url)
     Csm::csmUint32 modelCount = _models.GetSize();
 
     CubismRenderingInstanceSingleton_Metal *single = [CubismRenderingInstanceSingleton_Metal sharedManager];
-    id<MTLDevice> device = [single getMTLDevice];
+    id <MTLDevice> device = [single getMTLDevice];
 
     _renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
     _renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionLoad;
     _renderPassDescriptor.depthAttachment.texture = depthTarget;
 
-    if (_renderTarget != SelectTarget_None)
-    {
-        if (!_renderBuffer)
-        {
+    if (_renderTarget != SelectTarget_None) {
+        if (!_renderBuffer) {
             _renderBuffer = new Csm::Rendering::CubismOffscreenSurface_Metal;
             _renderBuffer->SetMTLPixelFormat(MTLPixelFormatBGRA8Unorm);
             _renderBuffer->SetClearColor(0.0, 0.0, 0.0, 0.0);
             _renderBuffer->CreateOffscreenSurface(static_cast<LAppDefine::csmUint32>(width), static_cast<LAppDefine::csmUint32>(height), nil);
 
-            if (_renderTarget == SelectTarget_ViewFrameBuffer)
-            {
+            if (_renderTarget == SelectTarget_ViewFrameBuffer) {
                 _sprite = [[LAppSprite alloc] initWithMyVar:width * 0.5f Y:height * 0.5f Width:width Height:height
                                                    MaxWidth:width MaxHeight:height Texture:_renderBuffer->GetColorBuffer()];
                 _modelSprite = [[LAppModelSprite alloc] initWithMyVar:width * 0.5f Y:height * 0.5f Width:width Height:height
-                                                   MaxWidth:width MaxHeight:height Texture:_renderBuffer->GetColorBuffer()];
+                                                             MaxWidth:width MaxHeight:height Texture:_renderBuffer->GetColorBuffer()];
 
             }
         }
 
-        if (_renderTarget == SelectTarget_ViewFrameBuffer)
-        {
+        if (_renderTarget == SelectTarget_ViewFrameBuffer) {
             _renderPassDescriptor.colorAttachments[0].texture = _renderBuffer->GetColorBuffer();
             _renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
         }
 
         //画面クリア
-        id<MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:_renderBuffer->GetRenderPassDescriptor()];
+        id <MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:_renderBuffer->GetRenderPassDescriptor()];
         [renderEncoder endEncoding];
     }
 
     Csm::Rendering::CubismRenderer_Metal::StartFrame(device, commandBuffer, _renderPassDescriptor);
 
-    for (Csm::csmUint32 i = 0; i < modelCount; ++i)
-    {
-        LAppModel* model = [self getModel:i];
+    for (Csm::csmUint32 i = 0; i < modelCount; ++i) {
+        LAppModel *model = [self getModel:i];
 
-        if (model->GetModel() == NULL)
-        {
+        if (model->GetModel() == NULL) {
             LAppPal::PrintLogLn("Failed to model->GetModel().");
             continue;
         }
 
         // 1. 画布原始尺寸
-        const float canvasWidth  = model->GetModel()->GetCanvasWidth();
+        const float canvasWidth = model->GetModel()->GetCanvasWidth();
         const float canvasHeight = model->GetModel()->GetCanvasHeight();
 
         // 2. 让模型整体落在 -1~1 范围内，保持比例
         const float baseScale = 2.0f / canvasHeight;
 
         // 2. drawable 实际像素宽高
-        const float drawableW = (float)drawable.texture.width;
-        const float drawableH = (float)drawable.texture.height;
+        const float drawableW = (float) drawable.texture.width;
+        const float drawableH = (float) drawable.texture.height;
 
         // 3. 投影矩阵补偿屏幕宽高比（防止圆形变椭圆）
         const float aspect = drawableW / drawableH;
@@ -476,17 +429,14 @@ Csm::csmString GetPath(CFURLRef url)
 //        model->GetModelMatrix()->LoadIdentity();
 
         // 必要があればここで乗算
-        if (_viewMatrix != NULL)
-        {
+        if (_viewMatrix != NULL) {
             projection.MultiplyByMatrix(_viewMatrix);
         }
 
-        if (_renderTarget == SelectTarget_ModelFrameBuffer)
-        {
-            Csm::Rendering::CubismOffscreenSurface_Metal& useTarget = model->GetRenderBuffer();
+        if (_renderTarget == SelectTarget_ModelFrameBuffer) {
+            Csm::Rendering::CubismOffscreenSurface_Metal &useTarget = model->GetRenderBuffer();
 
-            if (!useTarget.IsValid())
-            {// 描画ターゲット内部未作成の場合はここで作成
+            if (!useTarget.IsValid()) {// 描画ターゲット内部未作成の場合はここで作成
                 // モデル描画キャンバス
                 useTarget.SetMTLPixelFormat(MTLPixelFormatBGRA8Unorm);
                 useTarget.CreateOffscreenSurface(static_cast<LAppDefine::csmUint32>(width), static_cast<LAppDefine::csmUint32>(height));
@@ -500,14 +450,13 @@ Csm::csmString GetPath(CFURLRef url)
         model->Update();
         model->Draw(projection);///< 参照渡しなのでprojectionは変質する
 
-        if (_renderTarget == SelectTarget_ViewFrameBuffer && _renderBuffer && _modelSprite)
-        {
+        if (_renderTarget == SelectTarget_ViewFrameBuffer && _renderBuffer && _modelSprite) {
             MTLRenderPassDescriptor *renderPassDescriptor = [[[MTLRenderPassDescriptor alloc] init] autorelease];
             renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
             renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionLoad;
             renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
             renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1);
-            id<MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
+            id <MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
             float alpha = 0.4f;
             [_modelSprite SetColor:1.0f * alpha g:1.0f * alpha b:1.0f * alpha a:alpha];
             [_modelSprite renderImmidiate:renderEncoder];
@@ -515,10 +464,8 @@ Csm::csmString GetPath(CFURLRef url)
         }
 
         // 各モデルが持つ描画ターゲットをテクスチャとする場合はスプライトへの描画はここ
-        if (_renderTarget == SelectTarget_ModelFrameBuffer)
-        {
-            if (!model)
-            {
+        if (_renderTarget == SelectTarget_ModelFrameBuffer) {
+            if (!model) {
                 return;
             }
 
@@ -527,11 +474,11 @@ Csm::csmString GetPath(CFURLRef url)
             renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionLoad;
             renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
             renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1);
-            id<MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
+            id <MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
 
-            Csm::Rendering::CubismOffscreenSurface_Metal& useTarget = model->GetRenderBuffer();
-            LAppModelSprite* depthSprite = [[LAppModelSprite alloc] initWithMyVar:width * 0.5f Y:height * 0.5f Width:width Height:height
-                                                               MaxWidth:width MaxHeight:height Texture:useTarget.GetColorBuffer()];
+            Csm::Rendering::CubismOffscreenSurface_Metal &useTarget = model->GetRenderBuffer();
+            LAppModelSprite *depthSprite = [[LAppModelSprite alloc] initWithMyVar:width * 0.5f Y:height * 0.5f Width:width Height:height
+                                                                         MaxWidth:width MaxHeight:height Texture:useTarget.GetColorBuffer()];
             float a = i < 1 ? 1.0f : model->GetOpacity(); // 片方のみ不透明度を取得できるようにする
             [depthSprite SetColor:1.0f * a g:1.0f * a b:1.0f * a a:a];
             [depthSprite renderImmidiate:renderEncoder];
@@ -540,8 +487,7 @@ Csm::csmString GetPath(CFURLRef url)
         }
 
         // 如果需要显示并且有可点击的区域则绘制可点击区域
-        if (_showClickableAreas && [self hasClickableAreas])
-        {
+        if (_showClickableAreas && [self hasClickableAreas]) {
             // FIXME 不同于Android的渲染方式，iOS不能使用drawClickableAreas来渲染线框到Metal中，在LAppLive2DManager中使用 drawWireFrameForModel 进行处理
             //[self drawClickableAreas:model];
 
@@ -551,23 +497,27 @@ Csm::csmString GetPath(CFURLRef url)
     }
 }
 
-- (void)nextScene;
-{
+- (void)nextScene; {
+    if (_modelDir.GetSize() == 0) return;
     Csm::csmInt32 no = (_sceneIndex + 1) % _modelDir.GetSize();
     [self changeScene:no];
 }
 
-- (void)changeScene:(Csm::csmInt32)index;
-{
+- (void)preScene {
+    if (_modelDir.GetSize() == 0) return;
+    Csm::csmInt32 no = (_sceneIndex - 1 + _modelDir.GetSize()) % _modelDir.GetSize();
+    [self changeScene:no];
+}
+
+- (void)changeScene:(Csm::csmInt32)index; {
     _sceneIndex = index;
-    if (LAppDefine::DebugLogEnable)
-    {
+    if (LAppDefine::DebugLogEnable) {
         LAppPal::PrintLogLn("[APP]model index: %d", _sceneIndex);
     }
 
     // model3.jsonのパスを決定する.
     // ディレクトリ名とmodel3.jsonの名前を一致させておくこと.
-    const Csm::csmString& model = _modelDir[index];
+    const Csm::csmString &model = _modelDir[index];
 
     Csm::csmString modelPath(LAppDefine::ResourcesPath);
     modelPath += model;
@@ -575,6 +525,12 @@ Csm::csmString GetPath(CFURLRef url)
 
     Csm::csmString modelJsonName(model);
     modelJsonName += ".model3.json";
+
+    if (LAppDefine::DebugLogEnable) {
+        LAppPal::PrintLogLn("[Live2D] changeScene loading from %s%s",
+                modelPath.GetRawString(),
+                modelJsonName.GetRawString());
+    }
 
     [self releaseAllModel];
     _models.PushBack(new LAppModel());
@@ -610,52 +566,45 @@ Csm::csmString GetPath(CFURLRef url)
         float clearColorB = 0.0f;
 
 //        AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
-        L2DCubism* delegate = [L2DCubism sharedInstance];
-        ViewController* view = [delegate viewController];
+        L2DCubism *delegate = [L2DCubism sharedInstance];
+        ViewController *view = [delegate viewController];
 
         [self SwitchRenderingTarget:useRenderTarget];
         [self SetRenderTargetClearColor:clearColorR g:clearColorG b:clearColorB];
     }
 }
 
-- (Csm::csmUint32)GetModelNum;
-{
+- (Csm::csmUint32)GetModelNum; {
     return _models.GetSize();
 }
 
-- (void)SetViewMatrix:(Csm::CubismMatrix44*)m;
-{
+- (void)SetViewMatrix:(Csm::CubismMatrix44 *)m; {
     for (int i = 0; i < 16; i++) {
         _viewMatrix->GetArray()[i] = m->GetArray()[i];
     }
 }
 
-- (void)SwitchRenderingTarget:(SelectTarget)targetType
-{
+- (void)SwitchRenderingTarget:(SelectTarget)targetType {
     _renderTarget = targetType;
 }
 
-- (void)SetRenderTargetClearColor:(float)r g:(float)g b:(float)b
-{
+- (void)SetRenderTargetClearColor:(float)r g:(float)g b:(float)b {
     _clearColorR = r;
     _clearColorG = g;
     _clearColorB = b;
 }
 
-- (void)setModelScale:(float)scale
-{
+- (void)setModelScale:(float)scale {
     _modelScale = scale;
 }
 
-- (void)moveModel:(float)x y:(float)y
-{
-    if (LAppDefine::DebugLogEnable)
-    {
+- (void)moveModel:(float)x y:(float)y {
+    if (LAppDefine::DebugLogEnable) {
         LAppPal::PrintLogLn("[DEBUG]move model: x: [%f]; y: [%f]", x, y);
     }
 //    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
-    L2DCubism* delegate = [L2DCubism sharedInstance];
-    ViewController* view = [delegate viewController];
+    L2DCubism *delegate = [L2DCubism sharedInstance];
+    ViewController *view = [delegate viewController];
 
     const CGFloat retinaScale = [[UIScreen mainScreen] scale];
     // Retinaディスプレイサイズにするため倍率をかける
@@ -663,60 +612,52 @@ Csm::csmString GetPath(CFURLRef url)
     const float height = view.view.frame.size.height * retinaScale;
     _modelPositionX += x / width * 2.0f;
     _modelPositionY += -y / width * 2.0f;
-    if (LAppDefine::DebugLogEnable)
-    {
+    if (LAppDefine::DebugLogEnable) {
         LAppPal::PrintLogLn("[DEBUG]move model: normalizedX: [%f]; normalizedY: [%f]", _modelPositionX, _modelPositionY);
     }
 }
 
-- (void)updateLipSync:(float)mouth
-{
+- (void)updateLipSync:(float)mouth {
     _modelMouth = mouth;
-    if (LAppDefine::DebugLogEnable)
-    {
+    if (LAppDefine::DebugLogEnable) {
         LAppPal::PrintLogLn("[DEBUG]lip sync mouth: [%f]", _modelMouth);
     }
 
 }
 
-- (BOOL)hasClickableAreas
-{
+- (BOOL)hasClickableAreas {
     if (_models.GetSize() == 0) return NO;
-    
-    LAppModel* model = [self getModel:0];
+
+    LAppModel *model = [self getModel:0];
     if (!model || !model->GetModelSetting()) return NO;
-    
+
     const Csm::csmInt32 hitAreaCount = model->GetModelSetting()->GetHitAreasCount();
     return hitAreaCount > 0;
 }
 
-- (void)setShowClickableAreas:(BOOL)show
-{
+- (void)setShowClickableAreas:(BOOL)show {
     _showClickableAreas = show;
-    if (LAppDefine::DebugLogEnable)
-    {
+    if (LAppDefine::DebugLogEnable) {
         LAppPal::PrintLogLn("[DEBUG] Set show clickable areas: %s", show ? "YES" : "NO");
     }
 }
 
-- (BOOL)isShowingClickableAreas
-{
+- (BOOL)isShowingClickableAreas {
     return _showClickableAreas;
 }
 
-- (void)setupWireframesForModel:(LAppModel *)model
-{
+- (void)setupWireframesForModel:(LAppModel *)model {
     [self.wireSprites removeAllObjects];          // 先清空旧的
 //    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
-    L2DCubism* delegate = [L2DCubism sharedInstance];
-    ViewController* view = [delegate viewController];
+    L2DCubism *delegate = [L2DCubism sharedInstance];
+    ViewController *view = [delegate viewController];
 
     const CGFloat retinaScale = [[UIScreen mainScreen] scale];
     const float width = view.view.frame.size.width;
     const float height = view.view.frame.size.height;
 
     CubismRenderingInstanceSingleton_Metal *single = [CubismRenderingInstanceSingleton_Metal sharedManager];
-    id<MTLDevice> device = [single getMTLDevice];
+    id <MTLDevice> device = [single getMTLDevice];
 
     const Csm::csmInt32 cnt = model->GetModelSetting()->GetHitAreasCount();
     for (Csm::csmInt32 i = 0; i < cnt; ++i) {
@@ -728,20 +669,18 @@ Csm::csmString GetPath(CFURLRef url)
     }
 }
 
-- (void) drawWireFrameForModel:(LAppModel*)model
-                        device:(id<MTLDevice>)device
-                 commandBuffer:(id <MTLCommandBuffer>)commandBuffer
-               currentDrawable:(id<CAMetalDrawable>)drawable
-{
-    if (!model || !commandBuffer || !drawable)
-    {
+- (void)drawWireFrameForModel:(LAppModel *)model
+                       device:(id <MTLDevice>)device
+                commandBuffer:(id <MTLCommandBuffer>)commandBuffer
+              currentDrawable:(id <CAMetalDrawable>)drawable {
+    if (!model || !commandBuffer || !drawable) {
         NSLog(@"[ERROR] drawWireFrameForModel model:%p; commandBuffer:%@; drawable:%@;", model, commandBuffer, drawable);
         return;
     }
     // 获取设备信息和尺寸
 //    CubismRenderingInstanceSingleton_Metal *single = [CubismRenderingInstanceSingleton_Metal sharedManager];
 //    id<MTLDevice> device = [single getMTLDevice];
-    
+
 //    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
 //    ViewController* view = [delegate viewController];
 
@@ -752,8 +691,8 @@ Csm::csmString GetPath(CFURLRef url)
 //    const float deviceWidth = width * retinaScale;
 //    const float deviceHeight = height * retinaScale;
     // FIXME 注意，这里必须使用drawable的宽高，因为设备的宽高是固定不变的，在横屏切换的时候就会出现异常
-    const float width = (float)drawable.texture.width;
-    const float height = (float)drawable.texture.height;
+    const float width = (float) drawable.texture.width;
+    const float height = (float) drawable.texture.height;
 
     // 获取当前模型的变换矩阵
     Csm::CubismMatrix44 modelMatrix;
@@ -775,8 +714,7 @@ Csm::csmString GetPath(CFURLRef url)
 //    }
 
     // 根据宽高比调整投影矩阵，保持模型比例
-    if (width < height)
-    {
+    if (width < height) {
         if (canvasWidth < canvasHeight) {
             const float scaleX = (1.0f / windowAspect) / canvasWidth * _modelScale;
             const float scaleY = 2.0f / canvasHeight * _modelScale;
@@ -786,7 +724,7 @@ Csm::csmString GetPath(CFURLRef url)
             // Rice
             const float scaleX = (1.0f / windowAspect) / canvasHeight * _modelScale;
             const float scaleY = canvasAspect / canvasWidth * _modelScale;
-            if(canvasWidth == canvasHeight) {
+            if (canvasWidth == canvasHeight) {
                 modelMatrix.Scale(2.0f * scaleX, 2.0f * scaleY);
                 modelMatrix.Translate((1.0f / windowAspect) * _modelPositionX, _modelPositionY);
             } else {
@@ -795,9 +733,7 @@ Csm::csmString GetPath(CFURLRef url)
                 modelMatrix.Translate(_modelPositionX, windowAspect * _modelPositionY);
             }
         }
-    }
-    else
-    {
+    } else {
         // 横屏模式
         // 确保线框绘制的宽高比例正常
         if (canvasWidth < canvasHeight) {
@@ -821,7 +757,7 @@ Csm::csmString GetPath(CFURLRef url)
     }
 
     // 检查当前矩阵
-    const float* matrix = modelMatrix.GetArray();
+    const float *matrix = modelMatrix.GetArray();
     // 可点击区域
     const Csm::csmInt32 hitAreaCount = model->GetModelSetting()->GetHitAreasCount();
     // 渲染器共用
@@ -831,35 +767,30 @@ Csm::csmString GetPath(CFURLRef url)
     renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionLoad;
     renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
 //    renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1);
-    id<MTLRenderCommandEncoder> wireframeEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
+    id <MTLRenderCommandEncoder> wireframeEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
 //    Csm::Rendering::CubismOffscreenSurface_Metal& useTarget = model->GetRenderBuffer();
 
     // 遍历所有可点击区域并绘制线框
-    for (Csm::csmInt32 i = 0; i < hitAreaCount; i++)
-    {
+    for (Csm::csmInt32 i = 0; i < hitAreaCount; i++) {
         const char *hitAreaName = model->GetModelSetting()->GetHitAreaName(i);
         const Csm::CubismIdHandle drawID = model->GetModelSetting()->GetHitAreaId(i);
         LAppSprite *wireframeSprite = [self.wireSprites objectForKey:@(hitAreaName)];
         if (!wireframeSprite) continue;
 
-        if (model->GetModel() && drawID)
-        {
+        if (model->GetModel() && drawID) {
             const Csm::csmInt32 drawableIndex = model->GetModel()->GetDrawableIndex(drawID);
-            if (drawableIndex >= 0)
-            {
+            if (drawableIndex >= 0) {
                 const Csm::csmInt32 vertexCount = model->GetModel()->GetDrawableVertexCount(drawableIndex);
                 const Csm::csmFloat32 *vertices = model->GetModel()->GetDrawableVertices(drawableIndex);
 
-                if (vertexCount >= 3 && vertices)
-                {
+                if (vertexCount >= 3 && vertices) {
                     // 记录边界框信息
                     Csm::csmFloat32 minX = vertices[0];
                     Csm::csmFloat32 maxX = vertices[0];
                     Csm::csmFloat32 minY = vertices[1];
                     Csm::csmFloat32 maxY = vertices[1];
 
-                    for (Csm::csmInt32 j = 1; j < vertexCount; j++)
-                    {
+                    for (Csm::csmInt32 j = 1; j < vertexCount; j++) {
                         Csm::csmFloat32 x = vertices[j * 2];
                         Csm::csmFloat32 y = vertices[j * 2 + 1];
 
@@ -871,10 +802,10 @@ Csm::csmString GetPath(CFURLRef url)
 
                     // 应用模型变换到边界框顶点（转换为标准化设备坐标）
                     Csm::csmFloat32 boundaryVertices[8] = {
-                        minX, minY,
-                        maxX, minY,
-                        maxX, maxY,
-                        minX, maxY
+                            minX, minY,
+                            maxX, minY,
+                            maxX, maxY,
+                            minX, maxY
                     };
 
                     // 应用模型变换矩阵到边界框顶点，使用与模型渲染相同的变换
@@ -900,9 +831,13 @@ Csm::csmString GetPath(CFURLRef url)
                     // 根据区域名称选择颜色（使用更亮的颜色）
                     float colorR = 0.0f, colorG = 1.0f, colorB = 0.0f; // 默认绿色
                     if (strcmp(hitAreaName, "Head") == 0) {
-                        colorR = 1.0f; colorG = 0.2f; colorB = 0.2f; // 头部亮红色
+                        colorR = 1.0f;
+                        colorG = 0.2f;
+                        colorB = 0.2f; // 头部亮红色
                     } else if (strcmp(hitAreaName, "Body") == 0) {
-                        colorR = 0.2f; colorG = 0.2f; colorB = 1.0f; // 身体亮蓝色
+                        colorR = 0.2f;
+                        colorG = 0.2f;
+                        colorB = 1.0f; // 身体亮蓝色
                     }
                     float lineWidth = 4.0f / fminf(width, height);
 //                    float lineWidth = 10.0f;
@@ -924,8 +859,7 @@ Csm::csmString GetPath(CFURLRef url)
                     float boxWidth = (maxX - minX) * matrix[0] * 0.5f * width;
                     float boxHeight = (maxY - minY) * matrix[5] * 0.5f * height;
 
-                    if (!wireframeSprite.pipelineState && device)
-                    {
+                    if (!wireframeSprite.pipelineState && device) {
                         [wireframeSprite SetMTLFunction:device];
                         NSLog(@"[DEBUG] SetMTLFunction for pipelineState");
                     }
@@ -949,16 +883,15 @@ Csm::csmString GetPath(CFURLRef url)
  * @deprecated 使用 drawWireFrameForModel 来绘制Live2D模型可点击区域
  * @param model
  */
-- (void) drawClickableAreas:(LAppModel*)model
-{
+- (void)drawClickableAreas:(LAppModel *)model {
     if (!model || !model->GetModelSetting()) return;
 
     const Csm::csmInt32 hitAreaCount = model->GetModelSetting()->GetHitAreasCount();
     if (hitAreaCount <= 0) return;
 
 //    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
-    L2DCubism* delegate = [L2DCubism sharedInstance];
-    ViewController* view = [delegate viewController];
+    L2DCubism *delegate = [L2DCubism sharedInstance];
+    ViewController *view = [delegate viewController];
 
     // 获取屏幕尺寸（使用实际视图尺寸，不是retina scale）
     const CGFloat retinaScale = [[UIScreen mainScreen] scale];
@@ -974,7 +907,7 @@ Csm::csmString GetPath(CFURLRef url)
     const float canvasHeight = model->GetModel()->GetCanvasHeight() * retinaScale;
     const float deviceWidth = width * retinaScale;
     const float deviceHeight = height * retinaScale;
-    
+
     // 计算正确的缩放比例，匹配C++实现
     const float windowAspect = deviceWidth / deviceHeight;
     // 4. 投影矩阵补偿屏幕宽高比（防止圆形变椭圆）
@@ -986,8 +919,7 @@ Csm::csmString GetPath(CFURLRef url)
 //                deviceWidth, deviceHeight, windowAspect, canvasWidth, canvasHeight, canvasAspect, _modelPositionX, _modelPositionY);
 //    }
     // 根据宽高比调整投影矩阵，保持模型比例
-    if (deviceWidth < deviceHeight)
-    {
+    if (deviceWidth < deviceHeight) {
         if (canvasWidth < canvasHeight) {
             const float scaleX = (1.0f / windowAspect) / canvasWidth * _modelScale;
             const float scaleY = 2.0f / canvasHeight * _modelScale;
@@ -997,7 +929,7 @@ Csm::csmString GetPath(CFURLRef url)
             // Rice
             const float scaleX = (1.0f / windowAspect) / canvasHeight * _modelScale;
             const float scaleY = canvasAspect / canvasWidth * _modelScale;
-            if(canvasWidth == canvasHeight) {
+            if (canvasWidth == canvasHeight) {
                 modelMatrix.Scale(2.0f * scaleX, 2.0f * scaleY);
                 modelMatrix.Translate((1.0f / windowAspect) * _modelPositionX, _modelPositionY);
             } else {
@@ -1006,9 +938,7 @@ Csm::csmString GetPath(CFURLRef url)
                 modelMatrix.Translate(_modelPositionX, windowAspect * _modelPositionY);
             }
         }
-    }
-    else
-    {
+    } else {
         // 横屏模式
         // 确保线框绘制的宽高比例正常
         if (canvasWidth < canvasHeight) {
@@ -1026,32 +956,27 @@ Csm::csmString GetPath(CFURLRef url)
     }
 
     // 检查当前矩阵
-    const float* matrix = modelMatrix.GetArray();
+    const float *matrix = modelMatrix.GetArray();
 
     // 遍历所有可点击区域并绘制
-    for (Csm::csmInt32 i = 0; i < hitAreaCount; i++)
-    {
+    for (Csm::csmInt32 i = 0; i < hitAreaCount; i++) {
         const Csm::csmChar *hitAreaName = model->GetModelSetting()->GetHitAreaName(i);
         const Csm::CubismIdHandle drawID = model->GetModelSetting()->GetHitAreaId(i);
 
-        if (model->GetModel() && drawID)
-        {
+        if (model->GetModel() && drawID) {
             const Csm::csmInt32 drawableIndex = model->GetModel()->GetDrawableIndex(drawID);
-            if (drawableIndex >= 0)
-            {
+            if (drawableIndex >= 0) {
                 const Csm::csmInt32 vertexCount = model->GetModel()->GetDrawableVertexCount(drawableIndex);
                 const Csm::csmFloat32 *vertices = model->GetModel()->GetDrawableVertices(drawableIndex);
 
-                if (vertexCount >= 3 && vertices)
-                {
+                if (vertexCount >= 3 && vertices) {
                     // 记录边界框信息
                     Csm::csmFloat32 minX = vertices[0];
                     Csm::csmFloat32 maxX = vertices[0];
                     Csm::csmFloat32 minY = vertices[1];
                     Csm::csmFloat32 maxY = vertices[1];
 
-                    for (Csm::csmInt32 j = 1; j < vertexCount; j++)
-                    {
+                    for (Csm::csmInt32 j = 1; j < vertexCount; j++) {
                         Csm::csmFloat32 x = vertices[j * 2];
                         Csm::csmFloat32 y = vertices[j * 2 + 1];
 
@@ -1061,8 +986,7 @@ Csm::csmString GetPath(CFURLRef url)
                         maxY = y > maxY ? y : maxY;
                     }
 
-                    if (LAppDefine::DebugLogEnable)
-                    {
+                    if (LAppDefine::DebugLogEnable) {
                         LAppPal::PrintLogLn("[DEBUG] Clickable Area[%d]: %s [%.2f, %.2f, %.2f, %.2f] (Raw)",
                                 i, hitAreaName, minX, minY, maxX, maxY);
                     }
@@ -1070,10 +994,10 @@ Csm::csmString GetPath(CFURLRef url)
                     // 创建边界框顶点（矩形）
                     // 一个 长度为 8 的 float 数组，用来存放一个 矩形边界框的 4 个顶点坐标
                     float boundaryVertices[8] = {
-                        minX, minY,  // 左下角
-                        maxX, minY,  // 右下角
-                        maxX, maxY,  // 右上角
-                        minX, maxY   // 左上角
+                            minX, minY,  // 左下角
+                            maxX, minY,  // 右下角
+                            maxX, maxY,  // 右上角
+                            minX, maxY   // 左上角
                     };
 
                     // 应用模型变换矩阵到边界框顶点，使用与模型渲染相同的变换
@@ -1089,33 +1013,99 @@ Csm::csmString GetPath(CFURLRef url)
 
                         if (LAppDefine::DebugLogEnable) {
                             LAppPal::PrintLogLn("[DEBUG] Transform[%d]: (%f, %f) -> (%f, %f)", k, x, y,
-                                boundaryVertices[k * 2], boundaryVertices[k * 2 + 1]);
+                                    boundaryVertices[k * 2], boundaryVertices[k * 2 + 1]);
                         }
                     }
 
                     // 根据区域名称选择颜色（使用更亮的颜色）
                     float r = 0.0f, g = 1.0f, b = 0.0f; // 默认绿色
                     if (strcmp(hitAreaName, "Head") == 0) {
-                        r = 1.0f; g = 0.2f; b = 0.2f; // 头部亮红色
+                        r = 1.0f;
+                        g = 0.2f;
+                        b = 0.2f; // 头部亮红色
                     } else if (strcmp(hitAreaName, "Body") == 0) {
-                        r = 0.2f; g = 0.2f; b = 1.0f; // 身体亮蓝色
+                        r = 0.2f;
+                        g = 0.2f;
+                        b = 1.0f; // 身体亮蓝色
                     }
 
                     // 通过 ViewController 绘制边界框线框
-                    if (LAppDefine::DebugLogEnable)
-                    {
+                    if (LAppDefine::DebugLogEnable) {
                         LAppPal::PrintLogLn("[DEBUG] Drawing boundary box for area: %s, bounds=[%.2f,%.2f,%.2f,%.2f]",
                                 hitAreaName, minX, minY, maxX, maxY);
                     }
 
                     [view drawClickableAreaWireframe:boundaryVertices
-                                           vertexCount:4
-                                           r:r g:g b:b
-                                           areaName:[NSString stringWithUTF8String:hitAreaName]];
+                                         vertexCount:4
+                                                   r:r g:g b:b
+                                            areaName:[NSString stringWithUTF8String:hitAreaName]];
                 }
             }
         }
     }
+}
+
+- (BOOL)loadModels:(const Csm::csmString &)rootPath {
+    if (rootPath.GetLength() == 0)   // 空串就退化成默认行为
+    {
+        return NO;
+    }
+
+    LAppPal::PrintLogLn("[Live2D] loadModels rootPath = %s", rootPath.GetRawString());
+    _currentModelRoot = nil; // 清空用户自定义的模型地址路径
+    _sceneIndex = 0;
+
+    // 要在主线程中渲染
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self setUpModel]; // 设置模型路径地址
+        [self changeScene:_sceneIndex]; // 加载第一个模型
+    });
+    return true;
+}
+
+- (BOOL)loadModelPath:(const Csm::csmString &)dir
+             jsonName:(const Csm::csmString&)jsonName{
+    if (dir.GetLength() == 0 || jsonName.GetLength() == 0)   // 空串就退化成默认行为
+    {
+        return NO;
+    }
+
+    LAppPal::PrintLogLn("[Live2D] loadModelPath dir = %s, jsonName = %s", dir.GetRawString(), jsonName.GetRawString());
+
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        _modelDir.Clear();
+        _sceneIndex = 0;
+
+        NSString *modelDir   = [[NSString alloc] initWithUTF8String:dir.GetRawString()];
+        NSString *modelName  = [modelDir lastPathComponent];
+        NSString *jsonFile   = [[NSString alloc] initWithUTF8String:jsonName.GetRawString()];
+
+        _modelDir.PushBack(Csm::csmString([modelName UTF8String]));
+        qsort(_modelDir.GetPtr(), _modelDir.GetSize(), sizeof(Csm::csmString), CompareCsmString);
+        self.currentModelRoot = modelDir;
+
+        [self releaseAllModel];
+        _models.PushBack(new LAppModel());
+
+        Csm::csmString fullPath = dir;
+        fullPath.Append(1, '/');
+        LAppPal::PrintLogLn("[Live2D] loadModelPath fullPath = %s, jsonName = %s",
+                fullPath.GetRawString(), jsonName.GetRawString());
+        _models[0]->LoadAssets(fullPath.GetRawString(), jsonName.GetRawString());
+
+        [self setupWireframesForModel:_models[0]];
+    });
+    return YES;
+}
+
+- (BOOL)removeAllModels {
+    [self releaseAllModel];
+    return YES;
+}
+
+- (int32_t)getLoadedModelNum
+{
+    return _modelDir.GetSize();
 }
 
 @end

@@ -497,14 +497,7 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 
 - (void)switchToPreviousModel
 {
-    LAppLive2DManager* manager = [LAppLive2DManager getInstance];
-    Csm::csmInt32 currentIndex = manager.sceneIndex;
-    Csm::csmInt32 modelCount = manager.modelDir.GetSize();
-
-    if (modelCount > 0) {
-        Csm::csmInt32 previousIndex = (currentIndex - 1 + modelCount) % modelCount;
-        [manager changeScene:previousIndex];
-    }
+    [[LAppLive2DManager getInstance] nextScene];
 }
 
 - (void)switchToModel:(int)index
@@ -621,6 +614,33 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
     
     // 避免未使用参数警告
     (void)areaName;
+}
+
+- (BOOL)loadModels:(NSString *)rootPath {
+    std::string utf8Path = [rootPath UTF8String];
+    Csm::csmString csmPath(utf8Path.c_str());
+    return [[LAppLive2DManager getInstance] loadModels:csmPath];
+}
+
+- (BOOL)loadModelPath:(NSString *)dir
+             jsonName:(NSString *)jsonName {
+    // NSString → std::string → Csm::csmString
+    std::string utf8Path = [dir UTF8String];
+    Csm::csmString csmPath(utf8Path.c_str());
+    std::string utf8Name = [jsonName UTF8String];
+    Csm::csmString csmName(utf8Name.c_str());
+    [[LAppLive2DManager getInstance]loadModelPath:csmPath
+                                         jsonName:csmName];
+    return true;
+}
+
+- (BOOL)removeAllModels {
+    return [[LAppLive2DManager getInstance] removeAllModels];
+}
+
+- (int32_t)getLoadedModelNum
+{
+    return [[LAppLive2DManager getInstance] getLoadedModelNum];
 }
 
 @end

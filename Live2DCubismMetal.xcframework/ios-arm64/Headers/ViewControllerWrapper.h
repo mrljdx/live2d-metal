@@ -24,5 +24,9 @@
 - (BOOL)hasClickableAreas;
 - (void)setShowClickableAreas:(BOOL)show;
 - (BOOL)isShowingClickableAreas;
+- (BOOL)loadModels:(NSString *)rootPath;
+- (BOOL)loadModelPath:(NSString *)dir jsonName:(NSString*)jsonName;
+- (BOOL)removeAllModels;
+- (int32_t)getLoadedModelNum;
 
 @end
