@@ -19,7 +19,7 @@
 - (float)getAudioRms;
 - (BOOL)updateAudio:(float)deltaTime;
 - (void)releaseWavHandler;
-- (void)updateLipSync:(float)mouth;
+- (void)lipSync:(float)mouth;
 - (void)updateLipSync;
 - (BOOL)hasClickableAreas;
 - (void)setShowClickableAreas:(BOOL)show;

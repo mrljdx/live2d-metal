@@ -117,7 +117,7 @@
  * @brief 同步音频播放的口型
  * @param mouth 口型值
  */
-- (void)updateLipSync:(float)mouth;
+- (void)lipSync:(float)mouth;
 
 - (BOOL)hasClickableAreas;
 - (void)setShowClickableAreas:(BOOL)show;

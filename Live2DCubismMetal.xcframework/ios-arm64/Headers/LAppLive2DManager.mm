@@ -1082,7 +1082,7 @@ Csm::csmString GetPath(CFURLRef url) {
 
         _modelDir.PushBack(Csm::csmString([modelName UTF8String]));
         qsort(_modelDir.GetPtr(), _modelDir.GetSize(), sizeof(Csm::csmString), CompareCsmString);
-        self.currentModelRoot = modelDir;
+        _currentModelRoot = modelDir;
 
         [self releaseAllModel];
         _models.PushBack(new LAppModel());

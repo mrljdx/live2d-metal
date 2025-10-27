@@ -555,7 +555,7 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
     }
 }
 
-- (void)updateLipSync:(float)mouth
+- (void)lipSync:(float)mouth
 {
     LAppLive2DManager* manager = [LAppLive2DManager getInstance];
     [manager updateLipSync:mouth];

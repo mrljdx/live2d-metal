@@ -232,12 +232,12 @@
     }
 }
 
-- (void)updateLipSync:(float)mouth
+- (void)lipSync:(float)mouth
 {
     if ([_internalViewController respondsToSelector:@selector(updateLipSync:)]) {
-        [_internalViewController updateLipSync:mouth];
+        [_internalViewController lipSync:mouth];
     } else {
-        NSLog(@"[Live2D] Warning: updateLipSync method not available");
+        NSLog(@"[Live2D] Warning: lipSync method not available");
     }
 }
 
@@ -247,7 +247,7 @@
     float rms = [self getAudioRms];
 
     // 调用实际的唇形同步更新方法
-    [self updateLipSync:rms];
+    [self lipSync:rms];
 }
 
 - (BOOL)hasClickableAreas
