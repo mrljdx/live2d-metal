@@ -234,7 +234,7 @@
 
 - (void)lipSync:(float)mouth
 {
-    if ([_internalViewController respondsToSelector:@selector(updateLipSync:)]) {
+    if ([_internalViewController respondsToSelector:@selector(lipSync:)]) {
         [_internalViewController lipSync:mouth];
     } else {
         NSLog(@"[Live2D] Warning: lipSync method not available");
