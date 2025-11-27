@@ -512,7 +512,7 @@ Csm::csmString GetPath(CFURLRef url) {
 - (void)changeScene:(Csm::csmInt32)index; {
     _sceneIndex = index;
     if (LAppDefine::DebugLogEnable) {
-        LAppPal::PrintLogLn("[APP]model index: %d", _sceneIndex);
+        LAppPal::PrintLogLn("[DEBUG] changeScene _modelDir: %s, index: %d", _modelDir.GetPtr()->GetRawString(), _sceneIndex);
     }
 
     // model3.jsonのパスを決定する.
