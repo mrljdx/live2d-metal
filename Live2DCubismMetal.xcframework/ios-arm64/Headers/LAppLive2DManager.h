@@ -200,7 +200,15 @@ typedef NS_ENUM(NSUInteger, SelectTarget)
  */
 - (BOOL)removeAllModels;
 
+/**
+ * @brief 获取当前路径下已经加载的模型的数量
+ */
 - (int32_t)getLoadedModelNum;
+
+/**
+ * @brief 重制模型的位置
+ */
+- (void)resetModelPosition;
 
 @end
 

@@ -638,9 +638,12 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
     return [[LAppLive2DManager getInstance] removeAllModels];
 }
 
-- (int32_t)getLoadedModelNum
-{
+- (int32_t)getLoadedModelNum {
     return [[LAppLive2DManager getInstance] getLoadedModelNum];
+}
+
+- (void)resetModelPosition {
+    [[LAppLive2DManager getInstance] resetModelPosition];
 }
 
 @end

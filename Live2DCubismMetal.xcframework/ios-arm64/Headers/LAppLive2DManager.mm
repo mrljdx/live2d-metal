@@ -1103,9 +1103,13 @@ Csm::csmString GetPath(CFURLRef url) {
     return YES;
 }
 
-- (int32_t)getLoadedModelNum
-{
+- (int32_t)getLoadedModelNum {
     return _modelDir.GetSize();
+}
+
+- (void)resetModelPosition {
+    _modelPositionX = 0.0f; // 模型X坐标
+    _modelPositionY = 0.0f; // 模型Y坐标
 }
 
 @end

@@ -319,4 +319,12 @@
     }
 }
 
+- (void)resetModelPosition {
+    if ([_internalViewController respondsToSelector:@selector(resetModelPosition)]) {
+        [_internalViewController resetModelPosition];
+    } else {
+        NSLog(@"[Live2D] Warning: resetModelPosition method not available");
+    }
+}
+
 @end

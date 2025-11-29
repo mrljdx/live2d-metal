@@ -28,5 +28,6 @@
 - (BOOL)loadModelPath:(NSString *)dir jsonName:(NSString*)jsonName;
 - (BOOL)removeAllModels;
 - (int32_t)getLoadedModelNum;
+- (void)resetModelPosition;
 
 @end

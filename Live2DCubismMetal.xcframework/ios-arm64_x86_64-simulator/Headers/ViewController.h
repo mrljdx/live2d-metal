@@ -160,4 +160,6 @@
  */
 - (int32_t)getLoadedModelNum;
 
+- (void)resetModelPosition;
+
 @end
