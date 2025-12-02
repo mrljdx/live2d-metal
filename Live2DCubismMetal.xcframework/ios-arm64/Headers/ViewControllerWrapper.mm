@@ -327,4 +327,15 @@
     }
 }
 
+- (void)onStartMotion:(NSString *)motionGroup
+          motionIndex:(int)motionIndex
+             priority:(int)priority
+{
+    if ([_internalViewController respondsToSelector:@selector(onStartMotion:motionIndex:priority:)]) {
+        [_internalViewController onStartMotion:motionGroup motionIndex:motionIndex priority:priority];
+    } else {
+        NSLog(@"[Live2D] Warning: onStartMotion:motionIndex:priority: method not available");
+    }
+}
+
 @end

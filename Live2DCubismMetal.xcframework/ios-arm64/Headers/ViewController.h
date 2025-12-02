@@ -162,4 +162,8 @@
 
 - (void)resetModelPosition;
 
+- (void)onStartMotion:(NSString *)motionGroup
+          motionIndex:(int)motionIndex
+             priority:(int)priority;
+
 @end

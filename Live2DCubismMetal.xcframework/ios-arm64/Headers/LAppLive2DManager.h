@@ -210,6 +210,16 @@ typedef NS_ENUM(NSUInteger, SelectTarget)
  */
 - (void)resetModelPosition;
 
+/**
+  * @brief 启动指定的 Motion 动作
+  * @param motionGroup Motion 分组名（如 "TapBody", "Idle", "Flick" 等）
+  * @param motionIndex 分组内的 Motion 索引
+  * @param priority 优先级（PriorityNone/PriorityIdle/PriorityNormal/PriorityForce）
+  */
+- (void)onStartMotion:(const Csm::csmChar*)motionGroup
+          motionIndex:(Csm::csmInt32)motionIndex
+             priority:(Csm::csmInt32)priority;
+
 @end
 
 #endif /* LAppLive2DManager_h */

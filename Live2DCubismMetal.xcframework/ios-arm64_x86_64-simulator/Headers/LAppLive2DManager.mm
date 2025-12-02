@@ -18,6 +18,7 @@
 #import <Rendering/Metal/CubismRenderer_Metal.hpp>
 #import "Rendering/Metal/CubismRenderingInstanceSingleton_Metal.h"
 #import "Live2DCallbackBridge.h"
+using namespace LAppDefine;
 
 @interface LAppLive2DManager ()
 @property(nonatomic, assign) float modelScale;   // 模型缩放
@@ -1110,6 +1111,95 @@ Csm::csmString GetPath(CFURLRef url) {
 - (void)resetModelPosition {
     _modelPositionX = 0.0f; // 模型X坐标
     _modelPositionY = 0.0f; // 模型Y坐标
+}
+
+- (void)onStartMotion:(const Csm::csmChar*)motionGroup
+          motionIndex:(Csm::csmInt32)motionIndex
+             priority:(Csm::csmInt32)priority
+{
+    if (LAppDefine::DebugLogEnable) {
+        LAppPal::PrintLogLn("[APP]onStartMotion called: group=%s, index=%d, priority=%d",
+                motionGroup, motionIndex, priority);
+    }
+
+    // 1. 检查是否有加载的模型
+    if (_models.GetSize() == 0) {
+        LAppPal::PrintLogLn("[APP]Error: No models loaded, cannot start motion");
+        return;
+    }
+
+    // 2. 获取当前模型（默认使用第0个模型）
+    LAppModel* model = [self getModel:0];
+    if (model == nil) {
+        LAppPal::PrintLogLn("[APP]Error: Failed to get model instance");
+        return;
+    }
+
+    // 3. 获取模型设置
+    Csm::ICubismModelSetting* setting = model->GetModelSetting();
+    if (setting == NULL) {
+        LAppPal::PrintLogLn("[APP]Error: Model setting not available");
+        return;
+    }
+
+    // 4. 验证 Motion 分组是否存在
+    Csm::csmInt32 motionCount = setting->GetMotionCount(motionGroup);
+    if (motionCount <= 0) {
+        LAppPal::PrintLogLn("[APP]Error: Motion group '%s' not found or empty", motionGroup);
+        return;
+    }
+
+    // 5. 验证 Motion 索引是否有效
+    if (motionIndex < 0 || motionIndex >= motionCount) {
+        LAppPal::PrintLogLn("[APP]Error: Motion index %d out of range (0-%d) for group '%s'",
+                motionIndex, motionCount - 1, motionGroup);
+        return;
+    }
+
+    // 6. 启动 Motion（复用 onTap 中的回调函数）
+    Csm::CubismMotionQueueEntryHandle motionHandle = model->StartMotion(
+            motionGroup,                    // Motion 分组名
+            motionIndex,                    // Motion 索引
+            priority,                       // 优先级
+            FinishedMotion,                 // 完成回调
+            BeganMotion                     // 开始回调
+    );
+
+    // 7. 检查 Motion 是否成功启动
+    if (motionHandle == InvalidMotionQueueEntryHandleValue) {
+        LAppPal::PrintLogLn("[APP]Error: Failed to start motion %s/%d", motionGroup, motionIndex);
+        return;
+    }
+
+    // 8. 获取 Motion 文件路径并触发回调（复用 onTap 中的逻辑）
+    const Csm::csmString fileName = setting->GetMotionFileName(motionGroup, motionIndex);
+    Csm::csmString motionPath = Csm::csmString(model->GetModelHomeDir()) + fileName;
+    const Csm::csmChar* filePath = motionPath.GetRawString();
+
+    if (LAppDefine::DebugLogEnable) {
+        LAppPal::PrintLogLn("[DEBUG] Motion started successfully");
+        LAppPal::PrintLogLn("[DEBUG] Motion group: %s", motionGroup);
+        LAppPal::PrintLogLn("[DEBUG] Motion index: %d", motionIndex);
+        LAppPal::PrintLogLn("[DEBUG] Motion file: %s", fileName.GetRawString());
+        LAppPal::PrintLogLn("[DEBUG] Full path: %s", filePath);
+    }
+
+    // 9. 创建静态缓冲区来存储字符串，确保生命周期足够长（参考 onTap 第237-244行）
+    static char motionGroupBuffer[128];  // motionGroup 缓冲区
+    static char filePathBuffer[512];     // motionFilePath 缓冲区
+
+    // 安全地复制 motionGroup
+    strncpy(motionGroupBuffer, motionGroup, sizeof(motionGroupBuffer) - 1);
+    motionGroupBuffer[sizeof(motionGroupBuffer) - 1] = '\0';
+
+    // 安全地复制 filePath
+    strncpy(filePathBuffer, filePath, sizeof(filePathBuffer) - 1);
+    filePathBuffer[sizeof(filePathBuffer) - 1] = '\0';
+
+    // 10. 触发 Kotlin/Swift 层的回调（参考 onTap 第242-244行）
+    [[Live2DCallbackBridge sharedInstance] onMotionStart:motionGroupBuffer
+                                             motionIndex:motionIndex
+                                          motionFilePath:filePathBuffer];
 }
 
 @end

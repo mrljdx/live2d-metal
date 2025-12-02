@@ -48,6 +48,7 @@
 
 - (void)applicationWillResignActive:(UIApplication *)application
 {
+
 }
 
 - (void)applicationDidEnterBackground:(UIApplication *)application

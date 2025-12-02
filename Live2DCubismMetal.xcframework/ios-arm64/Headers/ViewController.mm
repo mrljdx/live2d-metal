@@ -646,4 +646,16 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
     [[LAppLive2DManager getInstance] resetModelPosition];
 }
 
+- (void)onStartMotion:(NSString *)motionGroup
+          motionIndex:(int)motionIndex
+             priority:(int)priority {
+    // 将 NSString 转换为 Csm::csmString，再获取 C 字符串指针
+    std::string group = [motionGroup UTF8String];
+    Csm::csmString csmGroup(group.c_str());
+
+    [[LAppLive2DManager getInstance] onStartMotion:csmGroup.GetRawString()
+                                       motionIndex:motionIndex
+                                          priority:priority];
+}
+
 @end
