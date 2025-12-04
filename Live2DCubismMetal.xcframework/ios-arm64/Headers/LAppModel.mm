@@ -135,16 +135,21 @@ void LAppModel::LoadAssets(const csmChar* dir, const csmChar* fileName)
         strncpy(modelNameBuffer, modelName.c_str(), sizeof(modelNameBuffer) - 1);
         modelNameBuffer[sizeof(modelNameBuffer) - 1] = '\0';
 
-        [callbackBridge onResourceInfo:modelNameBuffer
-                          resourceType:"model_name"
-                          resourcePath:modelNameBuffer];
+        // 立即调用model_name回调，避免静态缓冲区覆盖
+        {
+            [callbackBridge onResourceInfo:modelNameBuffer
+                              resourceType:"model_name"
+                              resourcePath:modelNameBuffer];
+        }
 
         // 2-2 JSON 文件
-        static char jsonPathBuffer[512];
-        snprintf(jsonPathBuffer, sizeof(jsonPathBuffer), "%s/%s", modelName.c_str(), fileName);
-        [callbackBridge onResourceInfo:modelNameBuffer
-                          resourceType:"json_file"
-                          resourcePath:jsonPathBuffer];
+        {
+            static char jsonPathBuffer[512];
+            snprintf(jsonPathBuffer, sizeof(jsonPathBuffer), "%s/%s", modelName.c_str(), fileName);
+            [callbackBridge onResourceInfo:modelNameBuffer
+                              resourceType:"json_file"
+                              resourcePath:jsonPathBuffer];
+        }
 
         // 2. 纹理列表
         for (csmInt32 i = 0; i < _modelSetting->GetTextureCount(); i++) {
