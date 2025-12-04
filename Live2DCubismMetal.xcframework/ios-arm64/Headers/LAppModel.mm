@@ -790,7 +790,6 @@ void LAppModel::Release()
             texturePath = _modelHomeDir + texturePath;
             NSLog(@"[DEBUG] LAppModel: Release texturePath:%s", texturePath.GetRawString());
             [textureManager releaseTextureByName:texturePath.GetRawString()];
-            [textureManager releaseTextures];
         }
     }
 
