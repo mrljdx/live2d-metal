@@ -81,10 +81,11 @@ LAppModel::~LAppModel()
 void LAppModel::LoadAssets(const csmChar* dir, const csmChar* fileName)
 {
     _modelHomeDir = dir;
+    _jsonFileName = fileName;
 
     if (_debugMode)
     {
-        LAppPal::PrintLogLn("[APP]load model setting: %s", fileName);
+        LAppPal::PrintLogLn("[APP]LoadAssets dir: %s , fileName: %s", dir, fileName);
     }
 
     csmSizeInt size;
@@ -98,7 +99,7 @@ void LAppModel::LoadAssets(const csmChar* dir, const csmChar* fileName)
 
     if (_model == NULL)
     {
-        LAppPal::PrintLogLn("[APP]Failed to LoadAssets().");
+        LAppPal::PrintLogLn("[APP]LoadAssets failed");
         return;
     }
 
@@ -106,59 +107,21 @@ void LAppModel::LoadAssets(const csmChar* dir, const csmChar* fileName)
 
     SetupTextures();
 
-    // 新增：传递模型信息到iOS层
-    //  已彻底修复字符串内存生命周期问题。主要改进：
-    //
-    //  1. 使用静态字符数组：采用 static char buffer[] 确保内存持久化
-    //  2. 安全的字符串拷贝：使用 strncpy 和 snprintf 进行安全字符串操作
-    //  3. 避免内存悬挂：不再使用可能失效的临时对象指针
+    // 传递模型信息到iOS层：简化为只传递 dir 和 fileName
     Live2DCallbackBridge* callbackBridge = [Live2DCallbackBridge sharedInstance];
     if (callbackBridge) {
-        static char gBuffer[256];
-        // 2-1 模型目录
-        csmString modelDirCsm = _modelHomeDir;               // 先转成 csmString
-        const csmChar* modelDirPtr = modelDirCsm.GetRawString();
-        strncpy(gBuffer, modelDirPtr, sizeof(gBuffer) - 1);
-        gBuffer[sizeof(gBuffer) - 1] = '\0';
-
-        // 提取模型目录名（去除路径前缀和末尾斜杠）
-        std::string modelDirStr(modelDirPtr);
-        size_t lastSlash = modelDirStr.find_last_of("/", modelDirStr.length() - 2);
-        std::string modelName = (lastSlash != std::string::npos) ? 
-            modelDirStr.substr(lastSlash + 1) : modelDirStr;
-        if (!modelName.empty() && modelName.back() == '/') {
-            modelName.pop_back();
-        }
-        
-        // 使用字符数组确保内存持久化
-        static char modelNameBuffer[256];
-        strncpy(modelNameBuffer, modelName.c_str(), sizeof(modelNameBuffer) - 1);
-        modelNameBuffer[sizeof(modelNameBuffer) - 1] = '\0';
-
-        // 立即调用model_name回调，避免静态缓冲区覆盖
-        {
-            [callbackBridge onResourceInfo:modelNameBuffer
-                              resourceType:"model_name"
-                              resourcePath:modelNameBuffer];
-        }
-
-        // 2-2 JSON 文件
-        {
-            static char jsonPathBuffer[512];
-            snprintf(jsonPathBuffer, sizeof(jsonPathBuffer), "%s/%s", modelName.c_str(), fileName);
-            [callbackBridge onResourceInfo:modelNameBuffer
-                              resourceType:"json_file"
-                              resourcePath:jsonPathBuffer];
-        }
-
-        // 2. 纹理列表
+        // 传递模型目录和JSON文件名
+        LAppPal::PrintLogLn("[APP]LoadAssets jsonFileName: %s", _jsonFileName.GetRawString());
+        [callbackBridge onResourceInfo:_modelHomeDir.GetRawString()
+                          resourceType:"json_file"
+                          resourcePath:_jsonFileName.GetRawString()];
+        // 纹理列表的回调
         for (csmInt32 i = 0; i < _modelSetting->GetTextureCount(); i++) {
-            static char texturePathBuffer[512];
-            const csmChar* texFileName = _modelSetting->GetTextureFileName(i);
-            snprintf(texturePathBuffer, sizeof(texturePathBuffer), "%s/%s", modelName.c_str(), texFileName);
-            [callbackBridge onResourceInfo:modelNameBuffer
+            const csmChar* textureFileName = _modelSetting->GetTextureFileName(i);
+            LAppPal::PrintLogLn("[APP]LoadAssets textureFileName: %s", textureFileName);
+            [callbackBridge onResourceInfo:_modelHomeDir.GetRawString()
                               resourceType:"texture"
-                              resourcePath:texturePathBuffer];
+                              resourcePath:textureFileName];
         }
 
     }
