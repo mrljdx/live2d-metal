@@ -140,15 +140,13 @@ Csm::csmString GetPath(CFURLRef url) {
 }
 
 - (void)releaseAllModel {
-    @synchronized (self) {
-        for (Csm::csmUint32 i = 0; i < _models.GetSize(); i++) {
-            _models[i]->Release();
-            delete _models[i];
-        }
-        _models.Clear();
-
-        [self.wireSprites removeAllObjects];   // ARC 会自动 release
+    for (Csm::csmUint32 i = 0; i < _models.GetSize(); i++) {
+        _models[i]->Release();
+        delete _models[i];
     }
+    _models.Clear();
+
+    [self.wireSprites removeAllObjects];   // ARC 会自动 release
 }
 
 - (void)setUpModel {
@@ -318,91 +316,90 @@ Csm::csmString GetPath(CFURLRef url) {
 
 - (void)onUpdate:(id <MTLCommandBuffer>)commandBuffer currentDrawable:(id <CAMetalDrawable>)drawable depthTexture:(id <MTLTexture>)depthTarget; {
 //    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
-    @synchronized (self) {
-        if (_models.GetSize() == 0) return;
+    if (_modelDir.GetSize() == 0) return;
 
-        L2DCubism *delegate = [L2DCubism sharedInstance];
-        ViewController *view = [delegate viewController];
+    L2DCubism *delegate = [L2DCubism sharedInstance];
+    ViewController *view = [delegate viewController];
 
-        const CGFloat retinaScale = [[UIScreen mainScreen] scale];
-        // Retinaディスプレイサイズにするため倍率をかける
-        const float width = view.view.frame.size.width * retinaScale;
-        const float height = view.view.frame.size.height * retinaScale;
+    const CGFloat retinaScale = [[UIScreen mainScreen] scale];
+    // Retinaディスプレイサイズにするため倍率をかける
+    const float width = view.view.frame.size.width * retinaScale;
+    const float height = view.view.frame.size.height * retinaScale;
 
-        Csm::CubismMatrix44 projection;
-        Csm::csmUint32 modelCount = _models.GetSize();
+    Csm::CubismMatrix44 projection;
+    Csm::csmUint32 modelCount = _models.GetSize();
 
-        CubismRenderingInstanceSingleton_Metal *single = [CubismRenderingInstanceSingleton_Metal sharedManager];
-        id <MTLDevice> device = [single getMTLDevice];
+    CubismRenderingInstanceSingleton_Metal *single = [CubismRenderingInstanceSingleton_Metal sharedManager];
+    id <MTLDevice> device = [single getMTLDevice];
 
-        _renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
-        _renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionLoad;
-        _renderPassDescriptor.depthAttachment.texture = depthTarget;
+    _renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
+    _renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionLoad;
+    _renderPassDescriptor.depthAttachment.texture = depthTarget;
 
-        if (_renderTarget != SelectTarget_None) {
-            if (!_renderBuffer) {
-                _renderBuffer = new Csm::Rendering::CubismOffscreenSurface_Metal;
-                _renderBuffer->SetMTLPixelFormat(MTLPixelFormatBGRA8Unorm);
-                _renderBuffer->SetClearColor(0.0, 0.0, 0.0, 0.0);
-                _renderBuffer->CreateOffscreenSurface(static_cast<LAppDefine::csmUint32>(width), static_cast<LAppDefine::csmUint32>(height), nil);
-
-                if (_renderTarget == SelectTarget_ViewFrameBuffer) {
-                    _sprite = [[LAppSprite alloc] initWithMyVar:width * 0.5f Y:height * 0.5f Width:width Height:height
-                                                       MaxWidth:width MaxHeight:height Texture:_renderBuffer->GetColorBuffer()];
-                    _modelSprite = [[LAppModelSprite alloc] initWithMyVar:width * 0.5f Y:height * 0.5f Width:width Height:height
-                                                                 MaxWidth:width MaxHeight:height Texture:_renderBuffer->GetColorBuffer()];
-
-                }
-            }
+    if (_renderTarget != SelectTarget_None) {
+        if (!_renderBuffer) {
+            _renderBuffer = new Csm::Rendering::CubismOffscreenSurface_Metal;
+            _renderBuffer->SetMTLPixelFormat(MTLPixelFormatBGRA8Unorm);
+            _renderBuffer->SetClearColor(0.0, 0.0, 0.0, 0.0);
+            _renderBuffer->CreateOffscreenSurface(static_cast<LAppDefine::csmUint32>(width), static_cast<LAppDefine::csmUint32>(height), nil);
 
             if (_renderTarget == SelectTarget_ViewFrameBuffer) {
-                _renderPassDescriptor.colorAttachments[0].texture = _renderBuffer->GetColorBuffer();
-                _renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
-            }
+                _sprite = [[LAppSprite alloc] initWithMyVar:width * 0.5f Y:height * 0.5f Width:width Height:height
+                                                   MaxWidth:width MaxHeight:height Texture:_renderBuffer->GetColorBuffer()];
+                _modelSprite = [[LAppModelSprite alloc] initWithMyVar:width * 0.5f Y:height * 0.5f Width:width Height:height
+                                                             MaxWidth:width MaxHeight:height Texture:_renderBuffer->GetColorBuffer()];
 
-            //画面クリア
-            id <MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:_renderBuffer->GetRenderPassDescriptor()];
-            [renderEncoder endEncoding];
+            }
         }
 
-        Csm::Rendering::CubismRenderer_Metal::StartFrame(device, commandBuffer, _renderPassDescriptor);
+        if (_renderTarget == SelectTarget_ViewFrameBuffer) {
+            _renderPassDescriptor.colorAttachments[0].texture = _renderBuffer->GetColorBuffer();
+            _renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
+        }
 
-        for (Csm::csmUint32 i = 0; i < modelCount; ++i) {
-            LAppModel *model = [self getModel:i];
+        //画面クリア
+        id <MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:_renderBuffer->GetRenderPassDescriptor()];
+        [renderEncoder endEncoding];
+    }
 
-            if (model->GetModel() == NULL) {
-                LAppPal::PrintLogLn("Failed to model->GetModel().");
-                continue;
-            }
+    Csm::Rendering::CubismRenderer_Metal::StartFrame(device, commandBuffer, _renderPassDescriptor);
 
-            // 1. 画布原始尺寸
-            const float canvasWidth = model->GetModel()->GetCanvasWidth();
-            const float canvasHeight = model->GetModel()->GetCanvasHeight();
+    for (Csm::csmUint32 i = 0; i < modelCount; ++i) {
+        LAppModel *model = [self getModel:i];
 
-            // 2. 让模型整体落在 -1~1 范围内，保持比例
-            const float baseScale = 2.0f / canvasHeight;
+        if (model->GetModel() == NULL) {
+            LAppPal::PrintLogLn("Failed to model->GetModel().");
+            continue;
+        }
 
-            // 2. drawable 实际像素宽高
-            const float drawableW = (float) drawable.texture.width;
-            const float drawableH = (float) drawable.texture.height;
+        // 1. 画布原始尺寸
+        const float canvasWidth = model->GetModel()->GetCanvasWidth();
+        const float canvasHeight = model->GetModel()->GetCanvasHeight();
 
-            // 3. 投影矩阵补偿屏幕宽高比（防止圆形变椭圆）
-            const float aspect = drawableW / drawableH;
-            // 投影矩阵补偿： *2 抵消官方内部 *0.5，再乘 aspect
-            if (model->GetModel()->GetCanvasWidth() > 1.0f && drawableW < drawableH) {
-                model->GetModelMatrix()->SetWidth(2.0f);
-                projection.Scale(1.0f, aspect);
-            } else {
-                projection.Scale(1.0f / aspect, 1.0f);
-            }
+        // 2. 让模型整体落在 -1~1 范围内，保持比例
+        const float baseScale = 2.0f / canvasHeight;
 
-            // TODO 提供一个全局的变量可以通过方法修改这个值从而实现自定义缩放大小
-            // 4. 模型矩阵只做这一次等比缩放，重置模型矩阵
-            model->GetModelMatrix()->LoadIdentity();
-            // 注意Scale方法的调用一定要在LoadIdentify之后，否则会失效
-            model->GetModelMatrix()->Scale(baseScale * _modelScale, baseScale * _modelScale);
-            model->GetModelMatrix()->Translate(_modelPositionX, _modelPositionY);
-            model->SetLipSyncValue(_modelMouth);
+        // 2. drawable 实际像素宽高
+        const float drawableW = (float) drawable.texture.width;
+        const float drawableH = (float) drawable.texture.height;
+
+        // 3. 投影矩阵补偿屏幕宽高比（防止圆形变椭圆）
+        const float aspect = drawableW / drawableH;
+        // 投影矩阵补偿： *2 抵消官方内部 *0.5，再乘 aspect
+        if (model->GetModel()->GetCanvasWidth() > 1.0f && drawableW < drawableH) {
+            model->GetModelMatrix()->SetWidth(2.0f);
+            projection.Scale(1.0f, aspect);
+        } else {
+            projection.Scale(1.0f / aspect, 1.0f);
+        }
+
+        // TODO 提供一个全局的变量可以通过方法修改这个值从而实现自定义缩放大小
+        // 4. 模型矩阵只做这一次等比缩放，重置模型矩阵
+        model->GetModelMatrix()->LoadIdentity();
+        // 注意Scale方法的调用一定要在LoadIdentify之后，否则会失效
+        model->GetModelMatrix()->Scale(baseScale * _modelScale, baseScale * _modelScale);
+        model->GetModelMatrix()->Translate(_modelPositionX, _modelPositionY);
+        model->SetLipSyncValue(_modelMouth);
 //        if (model->GetModel()->GetCanvasWidth() > 1.0f && width < height)
 //        {
 //            // 横に長いモデルを縦長ウィンドウに表示する際モデルの横サイズでscaleを算出する
@@ -414,7 +411,7 @@ Csm::csmString GetPath(CFURLRef url) {
 //            projection.Scale(static_cast<float>(height) / static_cast<float>(width), 1.0f);
 //        }
 
-            // 获取模型原始尺寸（Canvas尺寸）
+        // 获取模型原始尺寸（Canvas尺寸）
 //        float modelWidth = model->GetModel()->GetCanvasWidth();
 //        float modelHeight = model->GetModel()->GetCanvasHeight();
 //
@@ -430,75 +427,74 @@ Csm::csmString GetPath(CFURLRef url) {
 //            model->GetModelMatrix()->Scale(scale, scale);
 //        }
 
-            // 重置模型矩阵
+        // 重置模型矩阵
 //        model->GetModelMatrix()->LoadIdentity();
 
-            // 必要があればここで乗算
-            if (_viewMatrix != NULL) {
-                projection.MultiplyByMatrix(_viewMatrix);
+        // 必要があればここで乗算
+        if (_viewMatrix != NULL) {
+            projection.MultiplyByMatrix(_viewMatrix);
+        }
+
+        if (_renderTarget == SelectTarget_ModelFrameBuffer) {
+            Csm::Rendering::CubismOffscreenSurface_Metal &useTarget = model->GetRenderBuffer();
+
+            if (!useTarget.IsValid()) {// 描画ターゲット内部未作成の場合はここで作成
+                // モデル描画キャンバス
+                useTarget.SetMTLPixelFormat(MTLPixelFormatBGRA8Unorm);
+                useTarget.CreateOffscreenSurface(static_cast<LAppDefine::csmUint32>(width), static_cast<LAppDefine::csmUint32>(height));
+            }
+            _renderPassDescriptor.colorAttachments[0].texture = useTarget.GetColorBuffer();
+            _renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
+
+            Csm::Rendering::CubismRenderer_Metal::StartFrame(device, commandBuffer, _renderPassDescriptor);
+        }
+
+        model->Update();
+        model->Draw(projection);///< 参照渡しなのでprojectionは変質する
+
+        if (_renderTarget == SelectTarget_ViewFrameBuffer && _renderBuffer && _modelSprite) {
+            MTLRenderPassDescriptor *renderPassDescriptor = [[[MTLRenderPassDescriptor alloc] init] autorelease];
+            renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
+            renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionLoad;
+            renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
+            renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1);
+            id <MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
+            float alpha = 0.4f;
+            [_modelSprite SetColor:1.0f * alpha g:1.0f * alpha b:1.0f * alpha a:alpha];
+            [_modelSprite renderImmidiate:renderEncoder];
+            [renderEncoder endEncoding];
+        }
+
+        // 各モデルが持つ描画ターゲットをテクスチャとする場合はスプライトへの描画はここ
+        if (_renderTarget == SelectTarget_ModelFrameBuffer) {
+            if (!model) {
+                return;
             }
 
-            if (_renderTarget == SelectTarget_ModelFrameBuffer) {
-                Csm::Rendering::CubismOffscreenSurface_Metal &useTarget = model->GetRenderBuffer();
+            MTLRenderPassDescriptor *renderPassDescriptor = [[[MTLRenderPassDescriptor alloc] init] autorelease];
+            renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
+            renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionLoad;
+            renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
+            renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1);
+            id <MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
 
-                if (!useTarget.IsValid()) {// 描画ターゲット内部未作成の場合はここで作成
-                    // モデル描画キャンバス
-                    useTarget.SetMTLPixelFormat(MTLPixelFormatBGRA8Unorm);
-                    useTarget.CreateOffscreenSurface(static_cast<LAppDefine::csmUint32>(width), static_cast<LAppDefine::csmUint32>(height));
-                }
-                _renderPassDescriptor.colorAttachments[0].texture = useTarget.GetColorBuffer();
-                _renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
+            Csm::Rendering::CubismOffscreenSurface_Metal &useTarget = model->GetRenderBuffer();
+            LAppModelSprite *depthSprite = [[LAppModelSprite alloc] initWithMyVar:width * 0.5f Y:height * 0.5f Width:width Height:height
+                                                                         MaxWidth:width MaxHeight:height Texture:useTarget.GetColorBuffer()];
+            float a = i < 1 ? 1.0f : model->GetOpacity(); // 片方のみ不透明度を取得できるようにする
+            [depthSprite SetColor:1.0f * a g:1.0f * a b:1.0f * a a:a];
+            [depthSprite renderImmidiate:renderEncoder];
+            [renderEncoder endEncoding];
+            [depthSprite dealloc];
+        }
 
-                Csm::Rendering::CubismRenderer_Metal::StartFrame(device, commandBuffer, _renderPassDescriptor);
-            }
+        // 如果需要显示并且有可点击的区域则绘制可点击区域
+        if (_showClickableAreas && [self hasClickableAreas]) {
+            // FIXME 不同于Android的渲染方式，iOS不能使用drawClickableAreas来渲染线框到Metal中，在LAppLive2DManager中使用 drawWireFrameForModel 进行处理
+            //[self drawClickableAreas:model];
 
-            model->Update();
-            model->Draw(projection);///< 参照渡しなのでprojectionは変質する
-
-            if (_renderTarget == SelectTarget_ViewFrameBuffer && _renderBuffer && _modelSprite) {
-                MTLRenderPassDescriptor *renderPassDescriptor = [[[MTLRenderPassDescriptor alloc] init] autorelease];
-                renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
-                renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionLoad;
-                renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
-                renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1);
-                id <MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
-                float alpha = 0.4f;
-                [_modelSprite SetColor:1.0f * alpha g:1.0f * alpha b:1.0f * alpha a:alpha];
-                [_modelSprite renderImmidiate:renderEncoder];
-                [renderEncoder endEncoding];
-            }
-
-            // 各モデルが持つ描画ターゲットをテクスチャとする場合はスプライトへの描画はここ
-            if (_renderTarget == SelectTarget_ModelFrameBuffer) {
-                if (!model) {
-                    return;
-                }
-
-                MTLRenderPassDescriptor *renderPassDescriptor = [[[MTLRenderPassDescriptor alloc] init] autorelease];
-                renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
-                renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionLoad;
-                renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
-                renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1);
-                id <MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
-
-                Csm::Rendering::CubismOffscreenSurface_Metal &useTarget = model->GetRenderBuffer();
-                LAppModelSprite *depthSprite = [[LAppModelSprite alloc] initWithMyVar:width * 0.5f Y:height * 0.5f Width:width Height:height
-                                                                             MaxWidth:width MaxHeight:height Texture:useTarget.GetColorBuffer()];
-                float a = i < 1 ? 1.0f : model->GetOpacity(); // 片方のみ不透明度を取得できるようにする
-                [depthSprite SetColor:1.0f * a g:1.0f * a b:1.0f * a a:a];
-                [depthSprite renderImmidiate:renderEncoder];
-                [renderEncoder endEncoding];
-                [depthSprite dealloc];
-            }
-
-            // 如果需要显示并且有可点击的区域则绘制可点击区域
-            if (_showClickableAreas && [self hasClickableAreas]) {
-                // FIXME 不同于Android的渲染方式，iOS不能使用drawClickableAreas来渲染线框到Metal中，在LAppLive2DManager中使用 drawWireFrameForModel 进行处理
-                //[self drawClickableAreas:model];
-
-                // 创建新的渲染命令编码器用于线框绘制 device, commandBuffer, _renderPassDescriptor
-                [self drawWireFrameForModel:model device:device commandBuffer:commandBuffer currentDrawable:drawable];
-            }
+            // 创建新的渲染命令编码器用于线框绘制 device, commandBuffer, _renderPassDescriptor
+            [self drawWireFrameForModel:model device:device commandBuffer:commandBuffer currentDrawable:drawable];
         }
     }
 }
@@ -516,6 +512,8 @@ Csm::csmString GetPath(CFURLRef url) {
 }
 
 - (void)changeScene:(Csm::csmInt32)index; {
+    if (_modelDir.GetSize() == 0) return;
+
     _sceneIndex = index;
     if (LAppDefine::DebugLogEnable) {
         LAppPal::PrintLogLn("[DEBUG] changeScene _modelDir: %s, index: %d", _modelDir.GetPtr()->GetRawString(), _sceneIndex);

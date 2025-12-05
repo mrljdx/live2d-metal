@@ -294,9 +294,17 @@ void LAppModel::PreloadMotionGroup(const csmChar* group)
             LAppPal::PrintLogLn("[APP]load motion: %s => [%s_%d] ", path.GetRawString(), group, i);
         }
 
-        csmByte* buffer;
-        csmSizeInt size;
+        csmByte* buffer = NULL;
+        csmSizeInt size = 0;
         buffer = CreateBuffer(path.GetRawString(), &size);
+
+        if (buffer == NULL || size == 0)
+        {
+            LAppPal::PrintLogLn("[APP]Error: Failed to create buffer for motion: %s. File might be missing or path is wrong.", path.GetRawString());
+            // 如果 buffer 为 NULL，我们不应该调用 DeleteBuffer，直接跳过
+            continue;
+        }
+
         CubismMotion* tmpMotion = static_cast<CubismMotion*>(LoadMotion(buffer, size, name.GetRawString(), NULL, NULL, _modelSetting, group, i));
 
         if (tmpMotion)
@@ -310,6 +318,7 @@ void LAppModel::PreloadMotionGroup(const csmChar* group)
             _motions[name] = tmpMotion;
         }
 
+        // 无论 LoadMotion 成功与否，只要 buffer 被成功创建，就必须释放它
         DeleteBuffer(buffer, path.GetRawString());
     }
 }
