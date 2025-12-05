@@ -1117,6 +1117,29 @@ Csm::csmString GetPath(CFURLRef url) {
     _modelPositionY = 0.0f; // 模型Y坐标
 }
 
+- (Csm::csmFloat32)getModelPositionX {
+    return _modelPositionX;
+}
+
+- (Csm::csmFloat32)getModelPositionY {
+    return _modelPositionY;
+}
+
+- (void)setModelPosition:(Csm::csmFloat32)x y:(Csm::csmFloat32)y {
+    if (LAppDefine::DebugLogEnable) {
+        LAppPal::PrintLogLn("[DEBUG]setModelPosition: x: [%f]; y: [%f]", x, y);
+    }
+    _modelPositionX = x;
+    _modelPositionY = y;
+    if (LAppDefine::DebugLogEnable) {
+        LAppPal::PrintLogLn("[DEBUG]setModelPosition: model position set to X: [%f]; Y: [%f]", _modelPositionX, _modelPositionY);
+    }
+}
+
+- (Csm::csmFloat32)getModelScale {
+    return _modelScale;
+}
+
 - (void)onStartMotion:(const Csm::csmChar*)motionGroup
           motionIndex:(Csm::csmInt32)motionIndex
              priority:(Csm::csmInt32)priority

@@ -338,4 +338,39 @@
     }
 }
 
+- (float)modelPositionX {
+    if ([_internalViewController respondsToSelector:@selector(modelPositionX)]) {
+        return [_internalViewController modelPositionX];
+    } else {
+        NSLog(@"[Live2D] Warning: modelPositionX method not available");
+        return 0.0f;
+    }
+}
+
+- (float)modelPositionY {
+    if ([_internalViewController respondsToSelector:@selector(modelPositionY)]) {
+        return [_internalViewController modelPositionY];
+    } else {
+        NSLog(@"[Live2D] Warning: modelPositionY method not available");
+        return 0.0f;
+    }
+}
+
+- (void)setModelPosition:(float)x y:(float)y {
+    if ([_internalViewController respondsToSelector:@selector(setModelPosition:y:)]) {
+        [_internalViewController setModelPosition:x y:y];
+    } else {
+        NSLog(@"[Live2D] Warning: setModelPosition:y: method not available");
+    }
+}
+
+- (float)modelScale {
+    if ([_internalViewController respondsToSelector:@selector(modelScale)]) {
+        return [_internalViewController modelScale];
+    } else {
+        NSLog(@"[Live2D] Warning: modelScale method not available");
+        return 1.0f;
+    }
+}
+
 @end

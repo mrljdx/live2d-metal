@@ -32,5 +32,9 @@
 - (void)onStartMotion:(NSString *)motionGroup
           motionIndex:(int)motionIndex
              priority:(int)priority;
+- (float)modelPositionX;
+- (float)modelPositionY;
+- (void)setModelPosition:(float)x y:(float)y;
+- (float)modelScale;
 
 @end

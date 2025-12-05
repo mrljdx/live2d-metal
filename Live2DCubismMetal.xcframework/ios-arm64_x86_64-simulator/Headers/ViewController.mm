@@ -658,4 +658,20 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
                                           priority:priority];
 }
 
+- (float)modelPositionX {
+    return [[LAppLive2DManager getInstance] getModelPositionX];
+}
+
+- (float)modelPositionY {
+    return [[LAppLive2DManager getInstance] getModelPositionY];
+}
+
+- (void)setModelPosition:(float)x y:(float)y {
+    [[LAppLive2DManager getInstance] setModelPosition:x y:y];
+}
+
+- (float)modelScale {
+    return [[LAppLive2DManager getInstance] getModelScale];
+}
+
 @end

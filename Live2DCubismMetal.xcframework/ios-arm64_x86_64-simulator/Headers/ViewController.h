@@ -166,4 +166,29 @@
           motionIndex:(int)motionIndex
              priority:(int)priority;
 
+/**
+ * @brief 获取模型的X坐标位置
+ * @return 模型的X坐标值
+ */
+- (float)modelPositionX;
+
+/**
+ * @brief 获取模型的Y坐标位置
+ * @return 模型的Y坐标值
+ */
+- (float)modelPositionY;
+
+/**
+ * @brief 设置模型的绝对位置
+ * @param x X坐标值
+ * @param y Y坐标值
+ */
+- (void)setModelPosition:(float)x y:(float)y;
+
+/**
+ * @brief 获取模型的缩放值
+ * @return 模型的缩放值
+ */
+- (float)modelScale;
+
 @end

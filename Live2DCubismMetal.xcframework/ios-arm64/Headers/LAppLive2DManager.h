@@ -220,6 +220,31 @@ typedef NS_ENUM(NSUInteger, SelectTarget)
           motionIndex:(Csm::csmInt32)motionIndex
              priority:(Csm::csmInt32)priority;
 
+/**
+ * @brief 获取模型的X坐标位置
+ * @return 模型的X坐标值
+ */
+- (Csm::csmFloat32)getModelPositionX;
+
+/**
+ * @brief 获取模型的Y坐标位置
+ * @return 模型的Y坐标值
+ */
+- (Csm::csmFloat32)getModelPositionY;
+
+/**
+ * @brief 设置模型的绝对位置
+ * @param x X坐标值
+ * @param y Y坐标值
+ */
+- (void)setModelPosition:(Csm::csmFloat32)x y:(Csm::csmFloat32)y;
+
+/**
+ * @brief 获取模型的缩放值
+ * @return 模型的缩放值
+ */
+- (Csm::csmFloat32)getModelScale;
+
 @end
 
 #endif /* LAppLive2DManager_h */
