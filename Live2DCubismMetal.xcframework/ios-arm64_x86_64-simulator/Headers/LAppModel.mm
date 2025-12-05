@@ -745,31 +745,30 @@ void LAppModel::Release()
     }
 
     // 释放Live2D SDK 内部对象
-//    L2DCubism *delegate = [L2DCubism sharedInstance];
-//    LAppTextureManager *textureManager = [delegate getTextureManager];
+    L2DCubism *delegate = [L2DCubism sharedInstance];
+    LAppTextureManager *textureManager = [delegate getTextureManager];
 
-//    if (textureManager) {
-//        for (csmInt32 modelTextureNumber = 0; modelTextureNumber < _modelSetting->GetTextureCount(); modelTextureNumber++)
+    if (textureManager) {
+        for (csmInt32 modelTextureNumber = 0; modelTextureNumber < _modelSetting->GetTextureCount(); modelTextureNumber++)
+        {
+            // テクスチャ名が空文字だった場合は削除処理をスキップ
+            if (!strcmp(_modelSetting->GetTextureFileName(modelTextureNumber), ""))
+            {
+                continue;
+            }
+//        id<MTLTexture> tex = GetRenderer<Rendering::CubismRenderer_Metal>()->GetBindedTextureId(modelTextureNumber);   // SDK 提供的接口取已绑定纹理
+//        if (tex)
 //        {
-//            // テクスチャ名が空文字だった場合は削除処理をスキップ
-//            if (!strcmp(_modelSetting->GetTextureFileName(modelTextureNumber), ""))
-//            {
-//                continue;
-//            }
-//            id<MTLTexture> tex = GetRenderer<Rendering::CubismRenderer_Metal>()->GetBindedTextureId(modelTextureNumber);   // SDK 提供的接口取已绑定纹理
-//            if (tex)
-//            {
-//                NSLog(@"[DEBUG] LAppModel: Release texture:%p", tex);
-//                tex = nil; // 释放纹理
-//            }
-//            //テクスチャ管理クラスからモデルテクスチャを削除する
-////            csmString texturePath = _modelSetting->GetTextureFileName(modelTextureNumber);
-////            texturePath = _modelHomeDir + texturePath;
-////            NSLog(@"[DEBUG] LAppModel: Release texturePath:%s", texturePath.GetRawString());
-////            [textureManager releaseTextureByName:texturePath.GetRawString()];
-////            [textureManager releaseTextures];
+//            NSLog(@"[DEBUG] LAppModel: Release texture:%p", tex);
+//            tex = nil; // 释放纹理
 //        }
-//    }
+            //テクスチャ管理クラスからモデルテクスチャを削除する
+            csmString texturePath = _modelSetting->GetTextureFileName(modelTextureNumber);
+            texturePath = _modelHomeDir + texturePath;
+            NSLog(@"[DEBUG] LAppModel: Release texturePath:%s", texturePath.GetRawString());
+            [textureManager releaseTextureByName:texturePath.GetRawString()];
+        }
+    }
 
     CubismEyeBlink::Delete(_eyeBlink); // <-- 新增：释放眨眼控制器
     _eyeBlink = NULL;

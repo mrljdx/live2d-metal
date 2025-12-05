@@ -316,7 +316,8 @@ Csm::csmString GetPath(CFURLRef url) {
 
 - (void)onUpdate:(id <MTLCommandBuffer>)commandBuffer currentDrawable:(id <CAMetalDrawable>)drawable depthTexture:(id <MTLTexture>)depthTarget; {
 //    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
-    if (_modelDir.GetSize() == 0) return;
+    // 检查是否有可渲染的模型，如果没有则直接返回
+    if (_models.GetSize() == 0) return;
 
     L2DCubism *delegate = [L2DCubism sharedInstance];
     ViewController *view = [delegate viewController];
