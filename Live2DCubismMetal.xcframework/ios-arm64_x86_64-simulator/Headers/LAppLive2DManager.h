@@ -27,7 +27,6 @@ typedef NS_ENUM(NSUInteger, SelectTarget)
 @property (nonatomic) Csm::CubismMatrix44 *viewMatrix; //モデル描画に用いるView行列
 @property (nonatomic) Csm::csmVector<LAppModel*> models; //モデルインスタンスのコンテナ
 @property (nonatomic) Csm::csmInt32 sceneIndex; //表示するシーンのインデックス値
-@property (nonatomic, strong) NSString *currentModelRoot; // 当前选择的模型路径地址
 @property (nonatomic) SelectTarget renderTarget;
 @property (nonatomic) Csm::Rendering::CubismOffscreenSurface_Metal* renderBuffer;
 @property (nonatomic) LAppSprite* sprite;
@@ -37,6 +36,7 @@ typedef NS_ENUM(NSUInteger, SelectTarget)
 @property (nonatomic) float clearColorR;
 @property (nonatomic) float clearColorG;
 @property (nonatomic) float clearColorB;
+@property (nonatomic) BOOL isReleasing; // 标记是否正在释放模型，防止竞态条件
 
 @property (nonatomic) Csm::csmVector<Csm::csmString> modelDir; ///< モデルディレクトリ名のコンテナ
 @property (nonatomic) BOOL showClickableAreas; ///< 是否显示可点击区域

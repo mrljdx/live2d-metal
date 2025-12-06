@@ -84,12 +84,12 @@ Csm::csmString GetPath(CFURLRef url) {
         _sprite = nil;
         _viewMatrix = nil;
         _sceneIndex = 0;
-        _currentModelRoot = nil; // 当前选择的模型的路径地址
         _modelScale = 1.0f;   // 默认不放大
         _modelPositionX = 0.0f; // 模型X坐标
         _modelPositionY = 0.0f; // 模型Y坐标
         _modelMouth = 0.0f; // 闭嘴状态，办张0.5f，张嘴1.0f
         _showClickableAreas = NO; // 默认不显示可点击区域，调试情况下设为YES
+        _isReleasing = NO; // 初始化释放标志位
         self.wireSprites = [NSMutableDictionary dictionary]; // 绘制精灵
         self.wireframePassDesc = [[MTLRenderPassDescriptor alloc] init];
 
@@ -316,8 +316,9 @@ Csm::csmString GetPath(CFURLRef url) {
 
 - (void)onUpdate:(id <MTLCommandBuffer>)commandBuffer currentDrawable:(id <CAMetalDrawable>)drawable depthTexture:(id <MTLTexture>)depthTarget; {
 //    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
-    // 检查是否有可渲染的模型，如果没有则直接返回
-    if (_models.GetSize() == 0) return;
+    
+    // 检查是否正在释放模型，防止竞态条件
+    if (_isReleasing || _models.GetSize() == 0) return;
 
     L2DCubism *delegate = [L2DCubism sharedInstance];
     ViewController *view = [delegate viewController];
@@ -1057,13 +1058,13 @@ Csm::csmString GetPath(CFURLRef url) {
     }
 
     LAppPal::PrintLogLn("[Live2D] loadModels rootPath = %s", rootPath.GetRawString());
-    _currentModelRoot = nil; // 清空用户自定义的模型地址路径
     _sceneIndex = 0;
 
     // 要在主线程中渲染
     dispatch_async(dispatch_get_main_queue(), ^{
         [self setUpModel]; // 设置模型路径地址
         [self changeScene:_sceneIndex]; // 加载第一个模型
+        _isReleasing = NO;
     });
     return true;
 }
@@ -1087,23 +1088,24 @@ Csm::csmString GetPath(CFURLRef url) {
 
         _modelDir.PushBack(Csm::csmString([modelName UTF8String]));
         qsort(_modelDir.GetPtr(), _modelDir.GetSize(), sizeof(Csm::csmString), CompareCsmString);
-        _currentModelRoot = modelDir;
 
-        [self releaseAllModel];
         _models.PushBack(new LAppModel());
 
         Csm::csmString fullPath = dir;
         fullPath.Append(1, '/');
         LAppPal::PrintLogLn("[Live2D] loadModelPath fullPath = %s, jsonName = %s",
                 fullPath.GetRawString(), jsonName.GetRawString());
+        _models.PushBack(new LAppModel());
         _models[0]->LoadAssets(fullPath.GetRawString(), jsonName.GetRawString());
-
         [self setupWireframesForModel:_models[0]];
+        _isReleasing = NO;
     });
     return YES;
 }
 
 - (BOOL)removeAllModels {
+    // 设置标志位，防止在释放过程中访问模型
+    _isReleasing = YES;
     [self releaseAllModel];
     return YES;
 }
