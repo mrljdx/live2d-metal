@@ -1089,12 +1089,11 @@ Csm::csmString GetPath(CFURLRef url) {
         _modelDir.PushBack(Csm::csmString([modelName UTF8String]));
         qsort(_modelDir.GetPtr(), _modelDir.GetSize(), sizeof(Csm::csmString), CompareCsmString);
 
-        _models.PushBack(new LAppModel());
-
         Csm::csmString fullPath = dir;
         fullPath.Append(1, '/');
         LAppPal::PrintLogLn("[Live2D] loadModelPath fullPath = %s, jsonName = %s",
                 fullPath.GetRawString(), jsonName.GetRawString());
+
         _models.PushBack(new LAppModel());
         _models[0]->LoadAssets(fullPath.GetRawString(), jsonName.GetRawString());
         [self setupWireframesForModel:_models[0]];
