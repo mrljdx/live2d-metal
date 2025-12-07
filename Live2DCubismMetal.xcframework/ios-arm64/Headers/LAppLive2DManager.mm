@@ -1081,6 +1081,7 @@ Csm::csmString GetPath(CFURLRef url) {
     dispatch_sync(dispatch_get_main_queue(), ^{
         _modelDir.Clear();
         _sceneIndex = 0;
+        _isReleasing = YES;
 
         NSString *modelDir   = [[NSString alloc] initWithUTF8String:dir.GetRawString()];
         NSString *modelName  = [modelDir lastPathComponent];
@@ -1093,7 +1094,7 @@ Csm::csmString GetPath(CFURLRef url) {
         fullPath.Append(1, '/');
         LAppPal::PrintLogLn("[Live2D] loadModelPath fullPath = %s, jsonName = %s",
                 fullPath.GetRawString(), jsonName.GetRawString());
-
+        [self releaseAllModel];
         _models.PushBack(new LAppModel());
         _models[0]->LoadAssets(fullPath.GetRawString(), jsonName.GetRawString());
         [self setupWireframesForModel:_models[0]];
