@@ -679,7 +679,7 @@ Csm::csmString GetPath(CFURLRef url) {
                        device:(id <MTLDevice>)device
                 commandBuffer:(id <MTLCommandBuffer>)commandBuffer
               currentDrawable:(id <CAMetalDrawable>)drawable {
-    if (!model || !commandBuffer || !drawable) {
+    if (!model || !commandBuffer || !drawable || _isReleasing) {
         NSLog(@"[ERROR] drawWireFrameForModel model:%p; commandBuffer:%@; drawable:%@;", model, commandBuffer, drawable);
         return;
     }

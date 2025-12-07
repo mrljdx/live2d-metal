@@ -450,7 +450,7 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 
 - (void)renderToMetalLayer:(nonnull CAMetalLayer *)layer
 {
-    //NSLog(@"[DEBUG]ViewController: renderToMetalLayer is called");
+    NSLog(@"[DEBUG]ViewController: renderToMetalLayer is called");
 //    L2DCubism* delegate = [L2DCubism sharedInstance];
 //    if ([delegate getIsEnd]) {
     if (!self.isViewValid) {
@@ -463,6 +463,12 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 
     id <MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
     id<CAMetalDrawable> currentDrawable = [layer nextDrawable];
+
+    // 新增：检查可绘制对象
+    if (!currentDrawable) {
+        NSLog(@"⚠️ [DEBUG]ViewController nextDrawable returned nil, skipping frame");
+        return;
+    }
 
     MTLRenderPassDescriptor *renderPassDescriptor = [[[MTLRenderPassDescriptor alloc] init] autorelease];
     renderPassDescriptor.colorAttachments[0].texture = currentDrawable.texture;
