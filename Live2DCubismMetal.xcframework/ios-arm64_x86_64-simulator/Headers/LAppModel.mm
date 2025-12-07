@@ -280,6 +280,12 @@ void LAppModel::SetupModel(ICubismModelSetting* setting)
 
 void LAppModel::PreloadMotionGroup(const csmChar* group)
 {
+    // 检查 _modelSetting 是否有效
+    if (_modelSetting == NULL) {
+        LAppPal::PrintLogLn("[APP]ERROR: _modelSetting is NULL in PreloadMotionGroup for group: %s", group);
+        return;
+    }
+
     const csmInt32 count = _modelSetting->GetMotionCount(group);
 
     for (csmInt32 i = 0; i < count; i++)

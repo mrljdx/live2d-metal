@@ -450,7 +450,7 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 
 - (void)renderToMetalLayer:(nonnull CAMetalLayer *)layer
 {
-    NSLog(@"[DEBUG]ViewController: renderToMetalLayer is called");
+//    NSLog(@"[DEBUG]ViewController: renderToMetalLayer is called");
 //    L2DCubism* delegate = [L2DCubism sharedInstance];
 //    if ([delegate getIsEnd]) {
     if (!self.isViewValid) {
