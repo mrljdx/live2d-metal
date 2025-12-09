@@ -581,7 +581,7 @@ Csm::csmString GetPath(CFURLRef url) {
 }
 
 - (Csm::csmUint32)GetModelNum; {
-    return _models.GetSize();
+    return _modelDir.GetSize();
 }
 
 - (void)SetViewMatrix:(Csm::CubismMatrix44 *)m; {
@@ -1106,6 +1106,11 @@ Csm::csmString GetPath(CFURLRef url) {
 - (BOOL)removeAllModels {
     // 设置标志位，防止在释放过程中访问模型
     _isReleasing = YES;
+    _modelDir.Clear();
+    _sceneIndex = 0;
+    _modelScale = 1.0f;
+    _modelPositionX = 0.0f;
+    _modelPositionY = 0.0f;
     [self releaseAllModel];
     return YES;
 }
