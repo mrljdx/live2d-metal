@@ -116,14 +116,6 @@ public:
     Csm::Rendering::CubismOffscreenSurface_Metal& GetRenderBuffer();
 
     /**
-     * @brief   .moc3ファイルの整合性をチェックする
-     *
-     * @param[in]   mocName MOC3ファイル名
-     * @return      MOC3に整合性があれば'true'、そうでなければ'false'。
-     */
-    Csm::csmBool HasMocConsistencyFromFile(const Csm::csmChar* mocFileName);
-
-    /**
      * @brief   モデルセッティングを取得する
      */
     Csm::ICubismModelSetting* GetModelSetting() const { return _modelSetting; }

@@ -123,7 +123,6 @@ void LAppModel::LoadAssets(const csmChar* dir, const csmChar* fileName)
                               resourceType:"texture"
                               resourcePath:textureFileName];
         }
-
     }
 
 }
@@ -325,13 +324,19 @@ void LAppModel::PreloadMotionGroup(const csmChar* group)
             _motions[name] = tmpMotion;
         }
 
-        // 无论 LoadMotion 成功与否，只要 buffer 被成功创建，就必须释放它
         DeleteBuffer(buffer, path.GetRawString());
     }
 }
 
 void LAppModel::ReleaseMotionGroup(const csmChar* group) const
 {
+    // 【修复】检查模型设置是否有效
+    if (_modelSetting == NULL)
+    {
+        LAppPal::PrintLogLn("[APP]Error: Model setting is NULL, cannot release motion group");
+        return;
+    }
+
     const csmInt32 count = _modelSetting->GetMotionCount(group);
     for (csmInt32 i = 0; i < count; i++)
     {
@@ -473,6 +478,20 @@ void LAppModel::Update()
 
 CubismMotionQueueEntryHandle LAppModel::StartMotion(const csmChar* group, csmInt32 no, csmInt32 priority, ACubismMotion::FinishedMotionCallback onFinishedMotionHandler, ACubismMotion::BeganMotionCallback onBeganMotionHandler)
 {
+    // 【修复】检查模型设置是否有效
+    if (_modelSetting == NULL)
+    {
+        LAppPal::PrintLogLn("[APP]Error: Model setting is NULL, cannot start motion");
+        return InvalidMotionQueueEntryHandleValue;
+    }
+
+    // 【修复】检查motion manager是否有效
+    if (_motionManager == NULL)
+    {
+        LAppPal::PrintLogLn("[APP]Error: Motion manager is NULL, cannot start motion");
+        return InvalidMotionQueueEntryHandleValue;
+    }
+
     if (priority == PriorityForce)
     {
         _motionManager->SetReservePriority(priority);
@@ -504,7 +523,7 @@ CubismMotionQueueEntryHandle LAppModel::StartMotion(const csmChar* group, csmInt
         csmByte* buffer;
         csmSizeInt size;
         buffer = CreateBuffer(path.GetRawString(), &size);
-        motion = static_cast<CubismMotion*>(LoadMotion(buffer, size, NULL, onFinishedMotionHandler, NULL, _modelSetting, group, no));
+        motion = static_cast<CubismMotion*>(LoadMotion(buffer, size, NULL, onFinishedMotionHandler, onBeganMotionHandler, _modelSetting, group, no));
 
         if (motion)
         {
@@ -537,6 +556,13 @@ CubismMotionQueueEntryHandle LAppModel::StartMotion(const csmChar* group, csmInt
 
 CubismMotionQueueEntryHandle LAppModel::StartRandomMotion(const csmChar* group, csmInt32 priority, ACubismMotion::FinishedMotionCallback onFinishedMotionHandler, ACubismMotion::BeganMotionCallback onBeganMotionHandler)
 {
+    // 【修复】检查模型设置是否有效
+    if (_modelSetting == NULL)
+    {
+        LAppPal::PrintLogLn("[APP]Error: Model setting is NULL, cannot start random motion");
+        return InvalidMotionQueueEntryHandleValue;
+    }
+
     if (_modelSetting->GetMotionCount(group) == 0)
     {
         return InvalidMotionQueueEntryHandleValue;
@@ -573,6 +599,12 @@ void LAppModel::Draw(CubismMatrix44& matrix)
 
 csmBool LAppModel::HitTest(const csmChar* hitAreaName, csmFloat32 x, csmFloat32 y)
 {
+    // 【修复】检查模型设置是否有效
+    if (_modelSetting == NULL)
+    {
+        return false;
+    }
+
     // 透明時は当たり判定なし。
     if (_opacity < 1)
     {
@@ -682,33 +714,6 @@ Csm::Rendering::CubismOffscreenSurface_Metal& LAppModel::GetRenderBuffer()
     return _renderBuffer;
 }
 
-csmBool LAppModel::HasMocConsistencyFromFile(const csmChar* mocFileName)
-{
-    CSM_ASSERT(strcmp(mocFileName, ""));
-
-    csmByte* buffer;
-    csmSizeInt size;
-
-    csmString path = mocFileName;
-    path = _modelHomeDir + path;
-
-    buffer = CreateBuffer(path.GetRawString(), &size);
-
-    csmBool consistency = CubismMoc::HasMocConsistencyFromUnrevivedMoc(buffer, size);
-    if (!consistency)
-    {
-        CubismLogInfo("Inconsistent MOC3.");
-    }
-    else
-    {
-        CubismLogInfo("Consistent MOC3.");
-    }
-
-    DeleteBuffer(buffer);
-
-    return consistency;
-}
-
 void LAppModel::SetLipSyncValue(csmFloat32 mouth)
 {
     if (_model == NULL || _lipSyncIds.GetSize() == 0)
@@ -738,8 +743,10 @@ void LAppModel::Release()
         return;
     }
 
-    NSLog(@"[DEBUG] LAppModel Release model resource: %s", _modelSetting->GetModelFileName());
-
+    if (DebugLogEnable)
+    {
+        LAppPal::PrintLogLn("[DEBUG] LAppModel Release model resource: %s", _modelSetting->GetModelFileName());
+    }
     _renderBuffer.DestroyOffscreenSurface();
 
     ReleaseMotions();
@@ -763,12 +770,6 @@ void LAppModel::Release()
             {
                 continue;
             }
-//        id<MTLTexture> tex = GetRenderer<Rendering::CubismRenderer_Metal>()->GetBindedTextureId(modelTextureNumber);   // SDK 提供的接口取已绑定纹理
-//        if (tex)
-//        {
-//            NSLog(@"[DEBUG] LAppModel: Release texture:%p", tex);
-//            tex = nil; // 释放纹理
-//        }
             //テクスチャ管理クラスからモデルテクスチャを削除する
             csmString texturePath = _modelSetting->GetTextureFileName(modelTextureNumber);
             texturePath = _modelHomeDir + texturePath;
