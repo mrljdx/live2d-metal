@@ -9,6 +9,8 @@
 typedef void (*HitAreaCallback)(const char* hitAreaName, const char* modelName, float x, float y);
 typedef void (*MotionStartCallback)(const char* motionGroup, int motionIndex, const char* motionFilePath);
 typedef void (*ResourceInfoCallback)(const char* modelName, const char* resourceType, const char* resourcePath);
+typedef void (*MotionBeganCallback)(void);
+typedef void (*MotionFinishedCallback)(void);
 
 @interface Live2DCallbackBridge : NSObject
 
@@ -18,6 +20,8 @@ typedef void (*ResourceInfoCallback)(const char* modelName, const char* resource
 - (void)setHitAreaCallback:(HitAreaCallback)callback;
 - (void)setMotionStartCallback:(MotionStartCallback)callback;
 - (void)setResourceInfoCallback:(ResourceInfoCallback)callback;
+- (void)setMotionBeganCallback:(MotionBeganCallback)callback;
+- (void)setMotionFinishedCallback:(MotionFinishedCallback)callback;
 
 // 清除回调函数
 - (void)clearCallbacks;
@@ -26,5 +30,7 @@ typedef void (*ResourceInfoCallback)(const char* modelName, const char* resource
 - (void)onHitArea:(const char*)hitAreaName modelName:(const char*)modelName x:(float)x y:(float)y;
 - (void)onMotionStart:(const char*)motionGroup motionIndex:(int)motionIndex motionFilePath:(const char*)motionFilePath;
 - (void)onResourceInfo:(const char*)modelName resourceType:(const char*)resourceType resourcePath:(const char*)resourcePath;
+- (void)onMotionBegan;
+- (void)onMotionFinished;
 
 @end

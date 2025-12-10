@@ -266,11 +266,12 @@ void LAppModel::SetupModel(ICubismModelSetting* setting)
 
     _model->SaveParameters();
 
-    for (csmInt32 i = 0; i < _modelSetting->GetMotionGroupCount(); i++)
-    {
-        const csmChar* group = _modelSetting->GetMotionGroupName(i);
-        PreloadMotionGroup(group);
-    }
+    // 屏蔽PreloadMotionGroup
+//    for (csmInt32 i = 0; i < _modelSetting->GetMotionGroupCount(); i++)
+//    {
+//        const csmChar* group = _modelSetting->GetMotionGroupName(i);
+//        PreloadMotionGroup(group);
+//    }
 
     _motionManager->StopAllMotions();
 

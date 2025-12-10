@@ -37,10 +37,12 @@ static LAppLive2DManager *s_instance = nil;
 
 void BeganMotion(Csm::ACubismMotion *self) {
     LAppPal::PrintLogLn("Motion began: %x", self);
+    [[Live2DCallbackBridge sharedInstance] onMotionBegan];
 }
 
 void FinishedMotion(Csm::ACubismMotion *self) {
     LAppPal::PrintLogLn("Motion Finished: %x", self);
+    [[Live2DCallbackBridge sharedInstance] onMotionFinished];
 }
 
 int CompareCsmString(const void *a, const void *b) {

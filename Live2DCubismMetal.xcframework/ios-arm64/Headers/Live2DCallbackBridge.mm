@@ -9,6 +9,8 @@
     HitAreaCallback _hitAreaCallback;
     MotionStartCallback _motionStartCallback;
     ResourceInfoCallback _resourceInfoCallback;
+    MotionBeganCallback _motionBeganCallback;
+    MotionFinishedCallback _motionFinishedCallback;
 }
 
 + (instancetype)sharedInstance {
@@ -26,6 +28,8 @@
         _hitAreaCallback = nullptr;
         _motionStartCallback = nullptr;
         _resourceInfoCallback = nullptr;
+        _motionBeganCallback = nullptr;
+        _motionFinishedCallback = nullptr;
     }
     return self;
 }
@@ -42,10 +46,20 @@
     _resourceInfoCallback = callback;
 }
 
+- (void)setMotionBeganCallback:(MotionBeganCallback)callback {
+    _motionBeganCallback = callback;
+}
+
+- (void)setMotionFinishedCallback:(MotionFinishedCallback)callback {
+    _motionFinishedCallback = callback;
+}
+
 - (void)clearCallbacks {
     _hitAreaCallback = nullptr;
     _motionStartCallback = nullptr;
     _resourceInfoCallback = nullptr;
+    _motionBeganCallback = nullptr;
+    _motionFinishedCallback = nullptr;
 }
 
 - (void)onHitArea:(const char*)hitAreaName modelName:(const char*)modelName x:(float)x y:(float)y {
@@ -63,6 +77,18 @@
 - (void)onResourceInfo:(const char*)modelName resourceType:(const char*)resourceType resourcePath:(const char*)resourcePath {
     if (_resourceInfoCallback) {
         _resourceInfoCallback(modelName, resourceType, resourcePath);
+    }
+}
+
+- (void)onMotionBegan {
+    if (_motionBeganCallback) {
+        _motionBeganCallback();
+    }
+}
+
+- (void)onMotionFinished {
+    if (_motionFinishedCallback) {
+        _motionFinishedCallback();
     }
 }
 
