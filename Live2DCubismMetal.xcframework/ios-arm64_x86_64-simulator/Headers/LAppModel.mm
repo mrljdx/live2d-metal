@@ -107,23 +107,12 @@ void LAppModel::LoadAssets(const csmChar* dir, const csmChar* fileName)
 
     SetupTextures();
 
-    // 传递模型信息到iOS层：简化为只传递 dir 和 fileName
-    Live2DCallbackBridge* callbackBridge = [Live2DCallbackBridge sharedInstance];
-    if (callbackBridge) {
-        // 传递模型目录和JSON文件名
-        LAppPal::PrintLogLn("[APP]LoadAssets jsonFileName: %s", _jsonFileName.GetRawString());
-        [callbackBridge onResourceInfo:_modelHomeDir.GetRawString()
-                          resourceType:"json_file"
-                          resourcePath:_jsonFileName.GetRawString()];
-        // 纹理列表的回调
-        for (csmInt32 i = 0; i < _modelSetting->GetTextureCount(); i++) {
-            const csmChar* textureFileName = _modelSetting->GetTextureFileName(i);
-            LAppPal::PrintLogLn("[APP]LoadAssets textureFileName: %s", textureFileName);
-            [callbackBridge onResourceInfo:_modelHomeDir.GetRawString()
-                              resourceType:"texture"
-                              resourcePath:textureFileName];
-        }
-    }
+    // 传递模型加载的信息到Kotlin层
+    // 传递模型目录和JSON文件名
+    LAppPal::PrintLogLn("[APP]LoadAssets jsonFileName: %s", _jsonFileName.GetRawString());
+    [[Live2DCallbackBridge sharedInstance] onResourceInfo:_modelHomeDir.GetRawString()
+                                             resourceType:"json_file"
+                                             resourcePath:_jsonFileName.GetRawString()];
 
 }
 
