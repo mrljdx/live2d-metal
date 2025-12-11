@@ -454,12 +454,16 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
     // 如果Live2DView已经被dispose后，就不应该继续renderToMetalLayer
     L2DCubism* delegate = [L2DCubism sharedInstance];
     if ([delegate getIsEnd]) {
-        LAppPal::PrintLogLn("[APP]ViewController renderToMetalLayer isEnd.");
+        if (DebugLogEnable) {
+            LAppPal::PrintLogLn("[APP]ViewController renderToMetalLayer isEnd.");
+        }
         return;
     }
     if (!self.isViewValid) {
 //        NSLog(@"[DEBUG]ViewController: getIsEnd is true,_commandQueue:%p", _commandQueue);
-        NSLog(@"[DEBUG]ViewController renderToMetalLayer isViewValid :%b", self.isViewValid);
+        if (DebugLogEnable) {
+            LAppPal::PrintLogLn("[APP]ViewController renderToMetalLayer isViewValid :%b", self.isViewValid);
+        }
         return;
     }
 
@@ -470,7 +474,9 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 
     // 新增：检查可绘制对象
     if (!currentDrawable) {
-        NSLog(@"⚠️ [DEBUG]ViewController nextDrawable returned nil, skipping frame");
+        if (DebugLogEnable) {
+            LAppPal::PrintLogLn("[APP]ViewController nextDrawable returned nil, skipping frame");
+        }
         return;
     }
 
@@ -592,23 +598,32 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
                        vertexCount:(int)vertexCount 
                                r:(float)r g:(float)g b:(float)b 
                        areaName:(NSString*)areaName {
-    LAppPal::PrintLogLn("[DEBUG] ViewController::drawClickableAreaWireframe called for: %s, color=(%.1f,%.1f,%.1f)", [areaName UTF8String], r, g, b);
+    if (DebugLogEnable) {
+        LAppPal::PrintLogLn("[DEBUG] ViewController::drawClickableAreaWireframe called for: %s, color=(%.1f,%.1f,%.1f)", [areaName UTF8String], r, g, b);
+    }
     if (!vertices || vertexCount < 3 || !_renderSprite) {
-        LAppPal::PrintLogLn("[DEBUG] ViewController::drawClickableAreaWireframe early return: vertices=%p, vertexCount=%d, _renderSprite=%p",
-                           vertices, vertexCount, _renderSprite);
+        if (DebugLogEnable) {
+            LAppPal::PrintLogLn("[DEBUG] ViewController::drawClickableAreaWireframe early return: vertices=%p, vertexCount=%d, _renderSprite=%p",
+                    vertices, vertexCount, _renderSprite);
+        }
         return;
     }
 
     // 获取窗口尺寸
     int width = (int)self.view.bounds.size.width;
     int height = (int)self.view.bounds.size.height;
-    
-    LAppPal::PrintLogLn("[DEBUG] Window size: %dx%d, rendering %d vertices for %s", 
-                       width, height, vertexCount, [areaName UTF8String]);
 
-    // 打印所有顶点坐标用于调试
-    for (int i = 0; i < (vertexCount < 4 ? vertexCount : 4); i++) {
-        LAppPal::PrintLogLn("[DEBUG] Boundary vertex[%d]: (%.2f, %.2f)", i, vertices[i*2], vertices[i*2+1]);
+    if (DebugLogEnable) {
+        LAppPal::PrintLogLn("[DEBUG] Window size: %dx%d, rendering %d vertices for %s",
+                width, height, vertexCount, [areaName UTF8String]);
+    }
+
+
+    if (DebugLogEnable) {
+        // 打印所有顶点坐标用于调试
+        for (int i = 0; i < (vertexCount < 4 ? vertexCount : 4); i++) {
+            LAppPal::PrintLogLn("[DEBUG] Boundary vertex[%d]: (%.2f, %.2f)", i, vertices[i*2], vertices[i*2+1]);
+        }
     }
 
     // 使用 LAppSprite 的线框绘制功能
@@ -618,9 +633,10 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
     [_renderSprite renderWireframe:vertices count:vertexCount
                                     r:r g:g b:b a:0.9f
                          lineWidth: 3.0f];
+    if (DebugLogEnable) {
+        LAppPal::PrintLogLn("[DEBUG] ViewController::drawClickableAreaWireframe completed for: %s", [areaName UTF8String]);
+    }
 
-    LAppPal::PrintLogLn("[DEBUG] ViewController::drawClickableAreaWireframe completed for: %s", [areaName UTF8String]);
-    
     // 避免未使用参数警告
     (void)areaName;
 }

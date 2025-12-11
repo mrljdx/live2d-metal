@@ -36,4 +36,10 @@
 - (bool)loadModelPath:(NSString *)dir
              jsonName:(NSString *)jsonName;
 
+/// Add lifecycle observers for app background/foreground notifications
+- (void)addLifecycleObservers;
+
+/// Remove lifecycle observers
+- (void)removeLifecycleObservers;
+
 @end
