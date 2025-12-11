@@ -371,6 +371,13 @@ Csm::csmString GetPath(CFURLRef url) {
     for (Csm::csmUint32 i = 0; i < modelCount; ++i) {
         LAppModel *model = [self getModel:i];
 
+        // 多重安全检查
+        if (model == NULL)
+        {
+            LAppPal::PrintLogLn("[APP]Failed to get model instance.");
+            continue;
+        }
+
         if (model->GetModel() == NULL) {
             LAppPal::PrintLogLn("Failed to model->GetModel().");
             continue;
