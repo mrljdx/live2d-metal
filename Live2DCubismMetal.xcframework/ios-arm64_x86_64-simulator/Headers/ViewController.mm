@@ -451,11 +451,15 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 - (void)renderToMetalLayer:(nonnull CAMetalLayer *)layer
 {
 //    NSLog(@"[DEBUG]ViewController: renderToMetalLayer is called");
-//    L2DCubism* delegate = [L2DCubism sharedInstance];
-//    if ([delegate getIsEnd]) {
+    // 如果Live2DView已经被dispose后，就不应该继续renderToMetalLayer
+    L2DCubism* delegate = [L2DCubism sharedInstance];
+    if ([delegate getIsEnd]) {
+        LAppPal::PrintLogLn("[APP]ViewController renderToMetalLayer isEnd.");
+        return;
+    }
     if (!self.isViewValid) {
 //        NSLog(@"[DEBUG]ViewController: getIsEnd is true,_commandQueue:%p", _commandQueue);
-        NSLog(@"[DEBUG]ViewController: isViewValid :%b", self.isViewValid);
+        NSLog(@"[DEBUG]ViewController renderToMetalLayer isViewValid :%b", self.isViewValid);
         return;
     }
 
