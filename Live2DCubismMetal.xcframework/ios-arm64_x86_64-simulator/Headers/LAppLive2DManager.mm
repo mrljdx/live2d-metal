@@ -36,12 +36,16 @@ using namespace LAppDefine;
 static LAppLive2DManager *s_instance = nil;
 
 void BeganMotion(Csm::ACubismMotion *self) {
-    LAppPal::PrintLogLn("Motion began: %x", self);
+    if (DebugLogEnable) {
+        LAppPal::PrintLogLn("[APP]Motion began: %x", self);
+    }
     [[Live2DCallbackBridge sharedInstance] onMotionBegan];
 }
 
 void FinishedMotion(Csm::ACubismMotion *self) {
-    LAppPal::PrintLogLn("Motion Finished: %x", self);
+    if (DebugLogEnable) {
+        LAppPal::PrintLogLn("[APP]Motion Finished: %x", self);
+    }
     [[Live2DCallbackBridge sharedInstance] onMotionFinished];
 }
 
@@ -187,13 +191,13 @@ Csm::csmString GetPath(CFURLRef url) {
 }
 
 - (void)onTap:(Csm::csmFloat32)x floatY:(Csm::csmFloat32)y; {
-    if (LAppDefine::DebugLogEnable) {
+    if (DebugLogEnable) {
         LAppPal::PrintLogLn("[APP]tap point: {x:%.2f y:%.2f}", x, y);
     }
 
     for (Csm::csmUint32 i = 0; i < _models.GetSize(); i++) {
         if (_models[i]->HitTest(LAppDefine::HitAreaNameHead, x, y)) {
-            if (LAppDefine::DebugLogEnable) {
+            if (DebugLogEnable) {
                 LAppPal::PrintLogLn("[APP]hit area: [%s]", LAppDefine::HitAreaNameHead);
             }
 
@@ -205,7 +209,7 @@ Csm::csmString GetPath(CFURLRef url) {
             _models[i]->SetRandomExpression();
 
         } else if (_models[i]->HitTest(LAppDefine::HitAreaNameBody, x, y)) {
-            if (LAppDefine::DebugLogEnable) {
+            if (DebugLogEnable) {
                 LAppPal::PrintLogLn("[APP]hit area: [%s]", LAppDefine::HitAreaNameBody);
             }
 
@@ -219,7 +223,9 @@ Csm::csmString GetPath(CFURLRef url) {
             // 触发动画开始回调 - 获取实际的motion文件路径
             const Csm::csmChar *motionGroup = LAppDefine::MotionGroupTapBody;
             Csm::csmInt32 motionCount = _models[i]->GetModelSetting()->GetMotionCount(motionGroup);
-            LAppPal::PrintLogLn("[DEBUG] motionCount: %d", motionCount);
+            if (DebugLogEnable) {
+                LAppPal::PrintLogLn("[DEBUG] motionCount: %d", motionCount);
+            }
             if (motionCount > 0) {
                 Csm::csmInt32 selectedIndex = rand() % motionCount;
 
@@ -228,7 +234,7 @@ Csm::csmString GetPath(CFURLRef url) {
                 const Csm::csmString fileName = _models[i]->GetModelSetting()->GetMotionFileName(motionGroup, selectedIndex);
                 Csm::csmString motionPath = Csm::csmString(_models[i]->GetModelHomeDir()) + fileName;
                 const Csm::csmChar *filePath = motionPath.GetRawString();
-                if (LAppDefine::DebugLogEnable) {
+                if (DebugLogEnable) {
                     // 添加调试日志
                     LAppPal::PrintLogLn("[DEBUG] fileName: %s", fileName.GetRawString());
                     LAppPal::PrintLogLn("[DEBUG] modelHomeDir: %s", _models[i]->GetModelHomeDir().GetRawString());
@@ -249,7 +255,7 @@ Csm::csmString GetPath(CFURLRef url) {
             if ([self hasClickableAreas]) {
                 return;
             }
-            if (LAppDefine::DebugLogEnable) {
+            if (DebugLogEnable) {
                 LAppPal::PrintLogLn("[APP]no hit areas found, triggering motion directly");
             }
 
@@ -271,7 +277,7 @@ Csm::csmString GetPath(CFURLRef url) {
                     Csm::csmString motionPath = Csm::csmString(_models[i]->GetModelHomeDir()) + fileName;
                     const Csm::csmChar *filePath = motionPath.GetRawString();
 
-                    if (LAppDefine::DebugLogEnable) {
+                    if (DebugLogEnable) {
                         LAppPal::PrintLogLn("[DEBUG] Using Tap motion: %s", fileName.GetRawString());
                     }
 
@@ -295,7 +301,7 @@ Csm::csmString GetPath(CFURLRef url) {
                             Csm::csmString motionPath = Csm::csmString(_models[i]->GetModelHomeDir()) + fileName;
                             const Csm::csmChar *filePath = motionPath.GetRawString();
 
-                            if (LAppDefine::DebugLogEnable) {
+                            if (DebugLogEnable) {
                                 LAppPal::PrintLogLn("[DEBUG] Using %s motion: %s", motionGroups[j], fileName.GetRawString());
                             }
 
@@ -374,12 +380,16 @@ Csm::csmString GetPath(CFURLRef url) {
         // 多重安全检查
         if (model == NULL)
         {
-            LAppPal::PrintLogLn("[APP]Failed to get model instance.");
+            if (DebugLogEnable) {
+                LAppPal::PrintLogLn("[APP]Failed to get model instance.");
+            }
             continue;
         }
 
         if (model->GetModel() == NULL) {
-            LAppPal::PrintLogLn("Failed to model->GetModel().");
+            if (DebugLogEnable) {
+                LAppPal::PrintLogLn("Failed to model->GetModel().");
+            }
             continue;
         }
 
@@ -526,7 +536,7 @@ Csm::csmString GetPath(CFURLRef url) {
     if (_modelDir.GetSize() == 0) return;
 
     _sceneIndex = index;
-    if (LAppDefine::DebugLogEnable) {
+    if (DebugLogEnable) {
         LAppPal::PrintLogLn("[DEBUG] changeScene _modelDir: %s, index: %d", _modelDir.GetPtr()->GetRawString(), _sceneIndex);
     }
 
@@ -541,7 +551,7 @@ Csm::csmString GetPath(CFURLRef url) {
     Csm::csmString modelJsonName(model);
     modelJsonName += ".model3.json";
 
-    if (LAppDefine::DebugLogEnable) {
+    if (DebugLogEnable) {
         LAppPal::PrintLogLn("[Live2D] changeScene loading from %s%s",
                 modelPath.GetRawString(),
                 modelJsonName.GetRawString());
@@ -614,7 +624,7 @@ Csm::csmString GetPath(CFURLRef url) {
 }
 
 - (void)moveModel:(float)x y:(float)y {
-    if (LAppDefine::DebugLogEnable) {
+    if (DebugLogEnable) {
         LAppPal::PrintLogLn("[DEBUG]move model: x: [%f]; y: [%f]", x, y);
     }
 //    AppDelegate* delegate = (AppDelegate*) [[UIApplication sharedApplication] delegate];
@@ -627,14 +637,14 @@ Csm::csmString GetPath(CFURLRef url) {
     const float height = view.view.frame.size.height * retinaScale;
     _modelPositionX += x / width * 2.0f;
     _modelPositionY += -y / width * 2.0f;
-    if (LAppDefine::DebugLogEnable) {
+    if (DebugLogEnable) {
         LAppPal::PrintLogLn("[DEBUG]move model: normalizedX: [%f]; normalizedY: [%f]", _modelPositionX, _modelPositionY);
     }
 }
 
 - (void)updateLipSync:(float)mouth {
     _modelMouth = mouth;
-    if (LAppDefine::DebugLogEnable) {
+    if (DebugLogEnable) {
         LAppPal::PrintLogLn("[DEBUG]lip sync mouth: [%f]", _modelMouth);
     }
 
@@ -652,7 +662,7 @@ Csm::csmString GetPath(CFURLRef url) {
 
 - (void)setShowClickableAreas:(BOOL)show {
     _showClickableAreas = show;
-    if (LAppDefine::DebugLogEnable) {
+    if (DebugLogEnable) {
         LAppPal::PrintLogLn("[DEBUG] Set show clickable areas: %s", show ? "YES" : "NO");
     }
 }
@@ -1001,7 +1011,7 @@ Csm::csmString GetPath(CFURLRef url) {
                         maxY = y > maxY ? y : maxY;
                     }
 
-                    if (LAppDefine::DebugLogEnable) {
+                    if (DebugLogEnable) {
                         LAppPal::PrintLogLn("[DEBUG] Clickable Area[%d]: %s [%.2f, %.2f, %.2f, %.2f] (Raw)",
                                 i, hitAreaName, minX, minY, maxX, maxY);
                     }
@@ -1026,7 +1036,7 @@ Csm::csmString GetPath(CFURLRef url) {
                         boundaryVertices[k * 2] = matrix[0] * x + matrix[12]; // 第 k 个顶点的 x
                         boundaryVertices[k * 2 + 1] = matrix[5] * y + matrix[13]; // 第 k 个顶点的 y
 
-                        if (LAppDefine::DebugLogEnable) {
+                        if (DebugLogEnable) {
                             LAppPal::PrintLogLn("[DEBUG] Transform[%d]: (%f, %f) -> (%f, %f)", k, x, y,
                                     boundaryVertices[k * 2], boundaryVertices[k * 2 + 1]);
                         }
@@ -1045,7 +1055,7 @@ Csm::csmString GetPath(CFURLRef url) {
                     }
 
                     // 通过 ViewController 绘制边界框线框
-                    if (LAppDefine::DebugLogEnable) {
+                    if (DebugLogEnable) {
                         LAppPal::PrintLogLn("[DEBUG] Drawing boundary box for area: %s, bounds=[%.2f,%.2f,%.2f,%.2f]",
                                 hitAreaName, minX, minY, maxX, maxY);
                     }
@@ -1066,7 +1076,9 @@ Csm::csmString GetPath(CFURLRef url) {
         return NO;
     }
 
-    LAppPal::PrintLogLn("[Live2D] loadModels rootPath = %s", rootPath.GetRawString());
+    if (DebugLogEnable) {
+        LAppPal::PrintLogLn("[Live2D] loadModels rootPath = %s", rootPath.GetRawString());
+    }
     _sceneIndex = 0;
 
     // 要在主线程中渲染
@@ -1085,7 +1097,9 @@ Csm::csmString GetPath(CFURLRef url) {
         return NO;
     }
 
-    LAppPal::PrintLogLn("[Live2D] loadModelPath dir = %s, jsonName = %s", dir.GetRawString(), jsonName.GetRawString());
+    if (DebugLogEnable) {
+        LAppPal::PrintLogLn("[Live2D] loadModelPath dir = %s, jsonName = %s", dir.GetRawString(), jsonName.GetRawString());
+    }
 
     dispatch_sync(dispatch_get_main_queue(), ^{
         _modelDir.Clear();
@@ -1101,8 +1115,10 @@ Csm::csmString GetPath(CFURLRef url) {
 
         Csm::csmString fullPath = dir;
         fullPath.Append(1, '/');
-        LAppPal::PrintLogLn("[Live2D] loadModelPath fullPath = %s, jsonName = %s",
-                fullPath.GetRawString(), jsonName.GetRawString());
+        if (DebugLogEnable) {
+            LAppPal::PrintLogLn("[Live2D] loadModelPath fullPath = %s, jsonName = %s",
+                    fullPath.GetRawString(), jsonName.GetRawString());
+        }
         [self releaseAllModel];
         _models.PushBack(new LAppModel());
         _models[0]->LoadAssets(fullPath.GetRawString(), jsonName.GetRawString());
@@ -1142,12 +1158,12 @@ Csm::csmString GetPath(CFURLRef url) {
 }
 
 - (void)setModelPosition:(Csm::csmFloat32)x y:(Csm::csmFloat32)y {
-    if (LAppDefine::DebugLogEnable) {
+    if (DebugLogEnable) {
         LAppPal::PrintLogLn("[DEBUG]setModelPosition: x: [%f]; y: [%f]", x, y);
     }
     _modelPositionX = x;
     _modelPositionY = y;
-    if (LAppDefine::DebugLogEnable) {
+    if (DebugLogEnable) {
         LAppPal::PrintLogLn("[DEBUG]setModelPosition: model position set to X: [%f]; Y: [%f]", _modelPositionX, _modelPositionY);
     }
 }
@@ -1160,42 +1176,52 @@ Csm::csmString GetPath(CFURLRef url) {
           motionIndex:(Csm::csmInt32)motionIndex
              priority:(Csm::csmInt32)priority
 {
-    if (LAppDefine::DebugLogEnable) {
+    if (DebugLogEnable) {
         LAppPal::PrintLogLn("[APP]onStartMotion called: group=%s, index=%d, priority=%d",
                 motionGroup, motionIndex, priority);
     }
 
     // 1. 检查是否有加载的模型
     if (_models.GetSize() == 0) {
-        LAppPal::PrintLogLn("[APP]Error: No models loaded, cannot start motion");
+        if (DebugLogEnable) {
+            LAppPal::PrintLogLn("[APP]Error: No models loaded, cannot start motion");
+        }
         return;
     }
 
     // 2. 获取当前模型（默认使用第0个模型）
     LAppModel* model = [self getModel:0];
     if (model == nil) {
-        LAppPal::PrintLogLn("[APP]Error: Failed to get model instance");
+        if (DebugLogEnable) {
+            LAppPal::PrintLogLn("[APP]Error: Failed to get model instance");
+        }
         return;
     }
 
     // 3. 获取模型设置
     Csm::ICubismModelSetting* setting = model->GetModelSetting();
     if (setting == NULL) {
-        LAppPal::PrintLogLn("[APP]Error: Model setting not available");
+        if (DebugLogEnable) {
+            LAppPal::PrintLogLn("[APP]Error: Model setting not available");
+        }
         return;
     }
 
     // 4. 验证 Motion 分组是否存在
     Csm::csmInt32 motionCount = setting->GetMotionCount(motionGroup);
     if (motionCount <= 0) {
-        LAppPal::PrintLogLn("[APP]Error: Motion group '%s' not found or empty", motionGroup);
+        if (DebugLogEnable) {
+            LAppPal::PrintLogLn("[APP]Error: Motion group '%s' not found or empty", motionGroup);
+        }
         return;
     }
 
     // 5. 验证 Motion 索引是否有效
     if (motionIndex < 0 || motionIndex >= motionCount) {
-        LAppPal::PrintLogLn("[APP]Error: Motion index %d out of range (0-%d) for group '%s'",
-                motionIndex, motionCount - 1, motionGroup);
+        if (DebugLogEnable) {
+            LAppPal::PrintLogLn("[APP]Error: Motion index %d out of range (0-%d) for group '%s'",
+                    motionIndex, motionCount - 1, motionGroup);
+        }
         return;
     }
 
@@ -1210,7 +1236,9 @@ Csm::csmString GetPath(CFURLRef url) {
 
     // 7. 检查 Motion 是否成功启动
     if (motionHandle == InvalidMotionQueueEntryHandleValue) {
-        LAppPal::PrintLogLn("[APP]Error: Failed to start motion %s/%d", motionGroup, motionIndex);
+        if (DebugLogEnable) {
+            LAppPal::PrintLogLn("[APP]Error: Failed to start motion %s/%d", motionGroup, motionIndex);
+        }
         return;
     }
 
@@ -1219,7 +1247,7 @@ Csm::csmString GetPath(CFURLRef url) {
     Csm::csmString motionPath = Csm::csmString(model->GetModelHomeDir()) + fileName;
     const Csm::csmChar* filePath = motionPath.GetRawString();
 
-    if (LAppDefine::DebugLogEnable) {
+    if (DebugLogEnable) {
         LAppPal::PrintLogLn("[DEBUG] Motion started successfully");
         LAppPal::PrintLogLn("[DEBUG] Motion group: %s", motionGroup);
         LAppPal::PrintLogLn("[DEBUG] Motion index: %d", motionIndex);

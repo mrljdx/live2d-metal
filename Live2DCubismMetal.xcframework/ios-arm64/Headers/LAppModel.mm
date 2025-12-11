@@ -83,7 +83,7 @@ void LAppModel::LoadAssets(const csmChar* dir, const csmChar* fileName)
     _modelHomeDir = dir;
     _jsonFileName = fileName;
 
-    if (_debugMode)
+    if (DebugLogEnable)
     {
         LAppPal::PrintLogLn("[APP]LoadAssets dir: %s , fileName: %s", dir, fileName);
     }
@@ -109,7 +109,9 @@ void LAppModel::LoadAssets(const csmChar* dir, const csmChar* fileName)
 
     // 传递模型加载的信息到Kotlin层
     // 传递模型目录和JSON文件名
-    LAppPal::PrintLogLn("[APP]LoadAssets jsonFileName: %s", _jsonFileName.GetRawString());
+    if (DebugLogEnable) {
+        LAppPal::PrintLogLn("[APP]LoadAssets jsonFileName: %s", _jsonFileName.GetRawString());
+    }
     [[Live2DCallbackBridge sharedInstance] onResourceInfo:_modelHomeDir.GetRawString()
                                              resourceType:"json_file"
                                              resourcePath:_jsonFileName.GetRawString()];
@@ -133,7 +135,7 @@ void LAppModel::SetupModel(ICubismModelSetting* setting)
         csmString path = _modelSetting->GetModelFileName();
         path = _modelHomeDir + path;
 
-        if (_debugMode)
+        if (DebugLogEnable)
         {
             LAppPal::PrintLogLn("[APP]create model: %s", setting->GetModelFileName());
         }
@@ -243,7 +245,9 @@ void LAppModel::SetupModel(ICubismModelSetting* setting)
 
     if (_modelSetting == NULL || _modelMatrix == NULL)
     {
-        LAppPal::PrintLogLn("Failed to SetupModel().");
+        if (DebugLogEnable) {
+            LAppPal::PrintLogLn("Failed to SetupModel().");
+        }
         return;
     }
 
@@ -271,7 +275,9 @@ void LAppModel::PreloadMotionGroup(const csmChar* group)
 {
     // 检查 _modelSetting 是否有效
     if (_modelSetting == NULL) {
-        LAppPal::PrintLogLn("[APP]ERROR: _modelSetting is NULL in PreloadMotionGroup for group: %s", group);
+        if (DebugLogEnable) {
+            LAppPal::PrintLogLn("[APP]ERROR: _modelSetting is NULL in PreloadMotionGroup for group: %s", group);
+        }
         return;
     }
 
@@ -284,7 +290,7 @@ void LAppModel::PreloadMotionGroup(const csmChar* group)
         csmString path = _modelSetting->GetMotionFileName(group, i);
         path = _modelHomeDir + path;
 
-        if (_debugMode)
+        if (DebugLogEnable)
         {
             LAppPal::PrintLogLn("[APP]load motion: %s => [%s_%d] ", path.GetRawString(), group, i);
         }
@@ -295,7 +301,9 @@ void LAppModel::PreloadMotionGroup(const csmChar* group)
 
         if (buffer == NULL || size == 0)
         {
-            LAppPal::PrintLogLn("[APP]Error: Failed to create buffer for motion: %s. File might be missing or path is wrong.", path.GetRawString());
+            if (DebugLogEnable) {
+                LAppPal::PrintLogLn("[APP]Error: Failed to create buffer for motion: %s. File might be missing or path is wrong.", path.GetRawString());
+            }
             // 如果 buffer 为 NULL，我们不应该调用 DeleteBuffer，直接跳过
             continue;
         }
@@ -322,7 +330,9 @@ void LAppModel::ReleaseMotionGroup(const csmChar* group) const
     // 【修复】检查模型设置是否有效
     if (_modelSetting == NULL)
     {
-        LAppPal::PrintLogLn("[APP]Error: Model setting is NULL, cannot release motion group");
+        if (DebugLogEnable) {
+            LAppPal::PrintLogLn("[APP]Error: Model setting is NULL, cannot release motion group");
+        }
         return;
     }
 
@@ -470,14 +480,18 @@ CubismMotionQueueEntryHandle LAppModel::StartMotion(const csmChar* group, csmInt
     // 【修复】检查模型设置是否有效
     if (_modelSetting == NULL)
     {
-        LAppPal::PrintLogLn("[APP]Error: Model setting is NULL, cannot start motion");
+        if (DebugLogEnable) {
+            LAppPal::PrintLogLn("[APP]Error: Model setting is NULL, cannot start motion");
+        }
         return InvalidMotionQueueEntryHandleValue;
     }
 
     // 【修复】检查motion manager是否有效
     if (_motionManager == NULL)
     {
-        LAppPal::PrintLogLn("[APP]Error: Motion manager is NULL, cannot start motion");
+        if (DebugLogEnable) {
+            LAppPal::PrintLogLn("[APP]Error: Motion manager is NULL, cannot start motion");
+        }
         return InvalidMotionQueueEntryHandleValue;
     }
 
@@ -487,12 +501,14 @@ CubismMotionQueueEntryHandle LAppModel::StartMotion(const csmChar* group, csmInt
     }
     else if (!_motionManager->ReserveMotion(priority))
     {
-        if (_debugMode)
+        if (DebugLogEnable)
         {
             const csmString fileName = _modelSetting->GetMotionFileName(group, no);
             csmString path = fileName;
             path = _modelHomeDir + path;
-            LAppPal::PrintLogLn("[APP]can't start motion: %s", path.GetRawString());
+            if (DebugLogEnable) {
+                LAppPal::PrintLogLn("[APP]can't start motion: %s", path.GetRawString());
+            }
         }
         return InvalidMotionQueueEntryHandleValue;
     }
@@ -536,7 +552,7 @@ CubismMotionQueueEntryHandle LAppModel::StartMotion(const csmChar* group, csmInt
         path = _modelHomeDir + path;
     }
 
-    if (_debugMode)
+    if (DebugLogEnable)
     {
         LAppPal::PrintLogLn("[APP]start motion: [%s_%d]", group, no);
     }
@@ -548,7 +564,9 @@ CubismMotionQueueEntryHandle LAppModel::StartRandomMotion(const csmChar* group, 
     // 【修复】检查模型设置是否有效
     if (_modelSetting == NULL)
     {
-        LAppPal::PrintLogLn("[APP]Error: Model setting is NULL, cannot start random motion");
+        if (DebugLogEnable) {
+            LAppPal::PrintLogLn("[APP]Error: Model setting is NULL, cannot start random motion");
+        }
         return InvalidMotionQueueEntryHandleValue;
     }
 
@@ -614,7 +632,7 @@ csmBool LAppModel::HitTest(const csmChar* hitAreaName, csmFloat32 x, csmFloat32 
 void LAppModel::SetExpression(const csmChar* expressionID)
 {
     ACubismMotion* motion = _expressions[expressionID];
-    if (_debugMode)
+    if (DebugLogEnable)
     {
         LAppPal::PrintLogLn("[APP]expression: [%s]", expressionID);
     }
@@ -625,7 +643,7 @@ void LAppModel::SetExpression(const csmChar* expressionID)
     }
     else
     {
-        if (_debugMode)
+        if (DebugLogEnable)
         {
             LAppPal::PrintLogLn("[APP]expression[%s] is null ", expressionID);
         }

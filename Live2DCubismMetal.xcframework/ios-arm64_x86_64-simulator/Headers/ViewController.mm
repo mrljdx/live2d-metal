@@ -533,14 +533,13 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
 }
 
 - (BOOL)loadWavFile:(NSString *)filePath {
-    LAppPal::PrintLogLn("[APP]loadWavFile called: %s", filePath);
     if (!g_wavHandler) {
         g_wavHandler = new LAppWavFileHandler_Common();
     }
 
     const char *path = [filePath UTF8String];
     g_wavHandler->Start(Csm::csmString(path));
-    LAppPal::PrintLogLn("[APP]loadWavFile %s Success", path);
+    LAppPal::PrintLogLn("[APP]loadWavFile: %s", path);
     return YES;
 }
 
