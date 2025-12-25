@@ -191,4 +191,10 @@
  */
 - (float)modelScale;
 
+/**
+ * @brief 播放指定的 Expression（表情）
+ * @param expressionID Expression 的 ID 或名称（如 "angry", "happy", "sad" 等）
+ */
+- (void)setExpression:(NSString*)expressionID;
+
 @end

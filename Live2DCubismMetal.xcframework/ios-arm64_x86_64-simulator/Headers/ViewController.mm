@@ -699,4 +699,8 @@ static LAppWavFileHandler_Common* g_wavHandler = nullptr;
     return [[LAppLive2DManager getInstance] getModelScale];
 }
 
+- (void)setExpression:(NSString*)expressionID {
+    [[LAppLive2DManager getInstance] onSetExpression:[expressionID UTF8String]];
+}
+
 @end

@@ -373,4 +373,12 @@
     }
 }
 
+- (void)setExpression:(NSString*)expressionID {
+    if ([_internalViewController respondsToSelector:@selector(setExpression:)]) {
+        [_internalViewController setExpression:expressionID];
+    } else {
+        NSLog(@"[Live2D] Warning: setExpression: method not available");
+    }
+}
+
 @end

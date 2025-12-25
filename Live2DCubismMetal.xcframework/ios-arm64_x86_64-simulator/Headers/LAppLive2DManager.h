@@ -245,6 +245,12 @@ typedef NS_ENUM(NSUInteger, SelectTarget)
  */
 - (Csm::csmFloat32)getModelScale;
 
+/**
+ * @brief 播放指定的 Expression（表情）
+ * @param expressionID Expression 的 ID 或名称（如 "angry", "happy", "sad" 等）
+ */
+- (void)onSetExpression:(const Csm::csmChar*)expressionID;
+
 @end
 
 #endif /* LAppLive2DManager_h */

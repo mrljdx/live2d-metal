@@ -1273,4 +1273,35 @@ Csm::csmString GetPath(CFURLRef url) {
                                           motionFilePath:filePathBuffer];
 }
 
+- (void)onSetExpression:(const Csm::csmChar*)expressionID
+{
+    if (DebugLogEnable) {
+        LAppPal::PrintLogLn("[APP]onSetExpression called: expressionID=%s", expressionID);
+    }
+
+    // 1. 检查是否有加载的模型
+    if (_models.GetSize() == 0) {
+        if (DebugLogEnable) {
+            LAppPal::PrintLogLn("[APP]Error: No models loaded, cannot set expression");
+        }
+        return;
+    }
+
+    // 2. 获取当前模型（默认使用第0个模型）
+    LAppModel* model = [self getModel:0];
+    if (model == nil) {
+        if (DebugLogEnable) {
+            LAppPal::PrintLogLn("[APP]Error: Failed to get model instance");
+        }
+        return;
+    }
+
+    // 3. 调用模型的 SetExpression 方法播放指定的 expression
+    model->SetExpression(expressionID);
+
+    if (DebugLogEnable) {
+        LAppPal::PrintLogLn("[DEBUG] Expression set successfully: %s", expressionID);
+    }
+}
+
 @end

@@ -36,5 +36,6 @@
 - (float)modelPositionY;
 - (void)setModelPosition:(float)x y:(float)y;
 - (float)modelScale;
+- (void)setExpression:(NSString*)expressionID;
 
 @end
